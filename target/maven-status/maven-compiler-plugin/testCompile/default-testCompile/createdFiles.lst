@@ -1,0 +1,4 @@
+com/fishingtime/web/LoginInterceptorTest.class
+com/fishingtime/user/UserControllerTest.class
+com/fishingtime/user/UserServiceTest.class
+com/fishingtime/user/AuthControllerTest.class
