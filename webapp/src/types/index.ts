@@ -5,6 +5,8 @@ export interface HotItem {
   title: string
   hot: string
   tag?: string
+  /** 统一热度值，用于排序 */
+  normalizedHotScore?: number
 }
 
 /** 社区推荐帖子 */
@@ -28,4 +30,44 @@ export const PLATFORM_MAP: Record<string, { name: string; color: string }> = {
   weibo: { name: '微博热搜', color: '#e74c3c' },
   baidu: { name: '百度热搜', color: '#2d8cf0' },
   zhihu: { name: '知乎热榜', color: '#1a7ae0' },
+}
+
+/* ============ Auth ============ */
+
+/** 统一 API 响应 */
+export interface ApiResponse<T> {
+  code: number
+  message: string
+  data: T | null
+}
+
+/** 登录请求 */
+export interface LoginDTO {
+  username: string
+  password: string
+}
+
+/** 注册请求 */
+export interface RegisterDTO {
+  username: string
+  password: string
+  nickname: string
+  email?: string
+}
+
+/** 用户信息（后端返回） */
+export interface UserVO {
+  id: number
+  username: string
+  nickname: string
+}
+
+/** 错误码 → 前端显示文案 */
+export const AUTH_ERROR_MAP: Record<number, string> = {
+  1001: '该用户名已被注册',
+  1002: '账号不存在',
+  1003: '用户名或密码错误',
+  1004: '账号已被禁用',
+  400: '请求参数校验失败',
+  5000: '系统异常，请稍后重试',
 }

@@ -646,6 +646,13 @@ ul {
   border-color: var(--color-primary);
 }
 
+.auth-error {
+  color: #e74c3c;
+  font-size: 13px;
+  margin: -8px 0 4px;
+  line-height: 1.4;
+}
+
 .auth-footer {
   text-align: center;
   margin-top: 20px;

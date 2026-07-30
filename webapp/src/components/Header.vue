@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
+import { useAuth } from '@/stores/auth'
 import fishLogo from '@/assets/svg/logo/fish-logo.svg'
 
 const router = useRouter()
 const route = useRoute()
 const scrolled = ref(false)
+const { user, isLoggedIn, logout } = useAuth()
 
 const navItems = [
   { name: '首页', path: '/', key: 'home' },
@@ -16,6 +18,11 @@ const navItems = [
 
 function handleScroll() {
   scrolled.value = window.scrollY > 10
+}
+
+async function handleLogout() {
+  await logout()
+  router.push('/')
 }
 
 onMounted(() => window.addEventListener('scroll', handleScroll))
@@ -53,9 +60,27 @@ onUnmounted(() => window.removeEventListener('scroll', handleScroll))
           </svg>
           <input type="text" placeholder="搜索感兴趣的内容..." />
         </div>
-        <router-link to="/login" class="btn btn-outline">登录</router-link>
-        <router-link to="/register" class="btn btn-primary">注册</router-link>
+
+        <!-- 已登录 -->
+        <template v-if="isLoggedIn">
+          <span class="header-nickname">{{ user?.nickname }}</span>
+          <button class="btn btn-outline" @click="handleLogout">退出</button>
+        </template>
+
+        <!-- 未登录 -->
+        <template v-else>
+          <router-link to="/login" class="btn btn-outline">登录</router-link>
+          <router-link to="/register" class="btn btn-primary">注册</router-link>
+        </template>
       </div>
     </div>
   </header>
 </template>
+
+<style scoped>
+.header-nickname {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-text);
+}
+</style>

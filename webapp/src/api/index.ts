@@ -17,6 +17,57 @@ export async function fetchHotList(platform: string = 'weibo'): Promise<HotItem[
   return hotData[platform] || []
 }
 
+/** 从后端真实接口获取百度热榜 */
+export async function fetchBaiduHot(): Promise<HotItem[]> {
+  const res = await fetch('/api/hot/baidu', { credentials: 'same-origin' })
+  const json = await res.json()
+  if (json.code === 200 && Array.isArray(json.data)) {
+    return json.data.map((item: any, index: number) => ({
+      platform: 'baidu' as const,
+      rank: item.rank ?? (index + 1),
+      title: item.title ?? '',
+      hot: item.hotScore ?? '',
+      tag: '',
+      normalizedHotScore: item.normalizedHotScore ?? 0,
+    }))
+  }
+  throw new Error(json.message || '热榜加载失败')
+}
+
+/** 从后端真实接口获取知乎热榜 */
+export async function fetchZhihuHot(): Promise<HotItem[]> {
+  const res = await fetch('/api/hot/zhihu', { credentials: 'same-origin' })
+  const json = await res.json()
+  if (json.code === 200 && Array.isArray(json.data)) {
+    return json.data.map((item: any, index: number) => ({
+      platform: 'zhihu' as const,
+      rank: item.rank ?? (index + 1),
+      title: item.title ?? '',
+      hot: item.hotScore ?? '',
+      tag: '',
+      normalizedHotScore: item.normalizedHotScore ?? 0,
+    }))
+  }
+  throw new Error(json.message || '热榜加载失败')
+}
+
+/** 从后端真实接口获取微博热搜 */
+export async function fetchWeiboHot(): Promise<HotItem[]> {
+  const res = await fetch('/api/hot/weibo', { credentials: 'same-origin' })
+  const json = await res.json()
+  if (json.code === 200 && Array.isArray(json.data)) {
+    return json.data.map((item: any, index: number) => ({
+      platform: 'weibo' as const,
+      rank: item.rank ?? (index + 1),
+      title: item.title ?? '',
+      hot: item.hotScore ?? '',
+      tag: item.summary ?? '',
+      normalizedHotScore: item.normalizedHotScore ?? 0,
+    }))
+  }
+  throw new Error(json.message || '热榜加载失败')
+}
+
 export async function fetchAllPlatforms(): Promise<Record<string, HotItem[]>> {
   await delay(300)
   return hotData
