@@ -5,6 +5,8 @@ export interface HotItem {
   title: string
   hot: string
   tag?: string
+  /** 详情链接 */
+  url?: string
   /** 统一热度值，用于排序 */
   normalizedHotScore?: number
 }

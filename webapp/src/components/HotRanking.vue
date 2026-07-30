@@ -10,26 +10,59 @@ const list = ref<HotItem[]>([])
 const loading = ref(false)
 const errorMsg = ref('')
 
+/** 缓存有效期判断：当前时间 < nextRefreshTime + 10s 缓冲 */
+function isCacheValid(cached: { nextRefreshTime?: string }): boolean {
+  if (!cached.nextRefreshTime) return false
+  const deadline = new Date(cached.nextRefreshTime).getTime() + 10_000
+  return Date.now() < deadline
+}
+
+/** 平台缓存 */
+const cache = new Map<string, { data: HotItem[]; nextRefreshTime?: string }>()
+
 async function load(platform: string) {
   activePlatform.value = platform
-  loading.value = true
   errorMsg.value = ''
+
+  // 缓存有效 → 直接展示，不请求
+  const cached = cache.get(platform)
+  if (cached && isCacheValid(cached)) {
+    list.value = cached.data
+    return
+  }
+
+  loading.value = true
   list.value = []
 
   try {
-    let items: HotItem[]
+    let result: { data: HotItem[]; nextRefreshTime?: string }
+
     if (platform === 'baidu') {
-      items = await fetchBaiduHot()
+      result = await fetchBaiduHot()
     } else if (platform === 'zhihu') {
-      items = await fetchZhihuHot()
+      result = await fetchZhihuHot()
     } else if (platform === 'weibo') {
-      items = await fetchWeiboHot()
+      result = await fetchWeiboHot()
     } else {
-      items = await fetchHotList(platform)
+      result = { data: await fetchHotList(platform) }
     }
-    // 按 normalizedHotScore 降序排列
-    list.value = items.sort((a, b) => (b.normalizedHotScore ?? 0) - (a.normalizedHotScore ?? 0))
+
+    result.data.sort((a, b) => (b.normalizedHotScore ?? 0) - (a.normalizedHotScore ?? 0))
+
+    // 更新缓存
+    cache.set(platform, {
+      data: result.data,
+      nextRefreshTime: result.nextRefreshTime,
+    })
+
+    list.value = result.data
   } catch (e: any) {
+    // 请求失败但缓存还在 → 保留缓存，不显示错误
+    if (cached) {
+      list.value = cached.data
+      loading.value = false
+      return
+    }
     errorMsg.value = '热榜加载失败，请稍后重试'
   } finally {
     loading.value = false
@@ -59,22 +92,18 @@ onMounted(() => load('weibo'))
       </button>
     </div>
     <div class="hot-list">
-      <!-- 加载中 -->
       <div v-if="loading" style="text-align:center;padding:24px;color:var(--color-text-secondary)">
         加载中...
       </div>
 
-      <!-- 错误提示 -->
       <div v-else-if="errorMsg" style="text-align:center;padding:24px;color:#e74c3c;font-size:14px">
         {{ errorMsg }}
       </div>
 
-      <!-- 无数据 -->
       <div v-else-if="list.length === 0" style="text-align:center;padding:24px;color:var(--color-text-muted)">
         暂无热榜数据
       </div>
 
-      <!-- 热榜列表 -->
       <div
         v-for="item in list"
         :key="`${item.platform}-${item.rank}`"
@@ -82,7 +111,10 @@ onMounted(() => load('weibo'))
       >
         <span :class="rankClass(item.rank)">{{ item.rank }}</span>
         <div class="hot-info">
-          <div class="hot-title">{{ item.title }}</div>
+          <a v-if="item.url" :href="item.url" target="_blank" rel="noopener noreferrer" class="hot-title-link">
+            <span class="hot-title">{{ item.title }}</span>
+          </a>
+          <span v-else class="hot-title">{{ item.title }}</span>
           <div class="hot-meta">
             <span class="hot-count">🔥 {{ item.normalizedHotScore ?? 0 }}</span>
             <span v-if="item.tag" class="hot-tag">{{ item.tag }}</span>

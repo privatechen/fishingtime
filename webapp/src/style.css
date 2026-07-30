@@ -437,6 +437,16 @@ ul {
   white-space: nowrap;
 }
 
+.hot-title-link {
+  text-decoration: none;
+  color: inherit;
+  display: block;
+}
+
+.hot-title-link:hover .hot-title {
+  color: var(--color-primary);
+}
+
 .hot-meta {
   display: flex;
   align-items: center;

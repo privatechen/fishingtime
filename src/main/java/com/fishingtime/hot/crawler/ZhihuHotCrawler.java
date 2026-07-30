@@ -141,9 +141,10 @@ public class ZhihuHotCrawler implements HotCrawler {
                 String afterTarget = part.substring(objEnd + 1);
                 String detailText = extractStr(afterTarget, "\"detail_text\"");
 
-                // 转换 url：api.zhihu.com → www.zhihu.com
+                // 转换 url：api.zhihu.com → www.zhihu.com，questions → question
                 if (url != null && url.contains("api.zhihu.com")) {
-                    url = url.replace("api.zhihu.com", "www.zhihu.com");
+                    url = url.replace("api.zhihu.com", "www.zhihu.com")
+                            .replace("/questions/", "/question/");
                 }
 
                 String rawHot = detailText != null ? detailText : "";
