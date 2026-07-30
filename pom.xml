@@ -91,6 +91,44 @@
                     </excludes>
                 </configuration>
             </plugin>
+
+            <!-- 集成 Vue 前端构建到 Maven 生命周期 -->
+            <!-- IDEA 里点 Maven → package 自动跑 npm install + npm run build -->
+            <!-- 依赖系统已安装的 node/npm -->
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>exec-maven-plugin</artifactId>
+                <version>3.5.0</version>
+                <executions>
+                    <execution>
+                        <id>npm install</id>
+                        <phase>generate-resources</phase>
+                        <goals><goal>exec</goal></goals>
+                        <configuration>
+                            <executable>npm</executable>
+                            <arguments>
+                                <argument>--prefix</argument>
+                                <argument>${project.basedir}/webapp</argument>
+                                <argument>install</argument>
+                            </arguments>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>npm run build</id>
+                        <phase>generate-resources</phase>
+                        <goals><goal>exec</goal></goals>
+                        <configuration>
+                            <executable>npm</executable>
+                            <arguments>
+                                <argument>--prefix</argument>
+                                <argument>${project.basedir}/webapp</argument>
+                                <argument>run</argument>
+                                <argument>build</argument>
+                            </arguments>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
         </plugins>
     </build>
 </project>

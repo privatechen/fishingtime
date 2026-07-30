@@ -18,3 +18,12 @@ Thumbs.db
 # Env
 *.log
 *.tmp
+
+# Node
+node_modules/
+node/
+webapp/node_modules/
+webapp/node/
+
+# 设计素材
+方案/

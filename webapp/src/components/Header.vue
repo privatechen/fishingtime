@@ -1,0 +1,61 @@
+<script setup lang="ts">
+import { ref, onMounted, onUnmounted } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
+import fishLogo from '@/assets/svg/logo/fish-logo.svg'
+
+const router = useRouter()
+const route = useRoute()
+const scrolled = ref(false)
+
+const navItems = [
+  { name: '首页', path: '/', key: 'home' },
+  { name: '热榜', path: '/', key: 'hot' },
+  { name: '社区', path: '/', key: 'community' },
+  { name: '小游戏', path: '/', key: 'game' },
+]
+
+function handleScroll() {
+  scrolled.value = window.scrollY > 10
+}
+
+onMounted(() => window.addEventListener('scroll', handleScroll))
+onUnmounted(() => window.removeEventListener('scroll', handleScroll))
+</script>
+
+<template>
+  <header class="header" :class="{ scrolled }">
+    <div class="header-inner">
+      <!-- Logo -->
+      <router-link to="/" class="logo">
+        <img :src="fishLogo" alt="FishingTime" class="logo-img" />
+        <span>FishingTime</span>
+      </router-link>
+
+      <!-- Navigation -->
+      <nav class="nav">
+        <router-link
+          v-for="item in navItems"
+          :key="item.key"
+          :to="item.path"
+          class="nav-link"
+          :class="{ active: route.path === item.path && item.key === 'home' }"
+        >
+          {{ item.name }}
+        </router-link>
+      </nav>
+
+      <!-- Right -->
+      <div class="header-right">
+        <div class="search-box">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="8"/>
+            <path d="m21 21-4.3-4.3"/>
+          </svg>
+          <input type="text" placeholder="搜索感兴趣的内容..." />
+        </div>
+        <router-link to="/login" class="btn btn-outline">登录</router-link>
+        <router-link to="/register" class="btn btn-primary">注册</router-link>
+      </div>
+    </div>
+  </header>
+</template>
