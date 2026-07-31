@@ -31,4 +31,16 @@ public class HotItemDTO {
 
     /** 详情链接 */
     private String url;
+
+    /** 回复数（虎扑） */
+    private Integer replyCount;
+
+    /** 浏览数（虎扑） */
+    private Integer viewCount;
+
+    /** 作者（虎扑） */
+    private String author;
+
+    /** 发布时间（虎扑） */
+    private String publishTime;
 }

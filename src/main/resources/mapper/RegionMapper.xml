@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.fishingtime.region.mapper.RegionMapper">
+
+    <resultMap id="regionMap" type="com.fishingtime.region.domain.Region">
+        <id column="id" property="id"/>
+        <result column="name" property="name"/>
+        <result column="adcode" property="adcode"/>
+        <result column="citycode" property="citycode"/>
+        <result column="level" property="level"/>
+        <result column="parent_adcode" property="parentAdcode"/>
+        <result column="created_at" property="createdAt"/>
+        <result column="updated_at" property="updatedAt"/>
+    </resultMap>
+
+    <sql id="baseColumns">
+        id, name, adcode, citycode, level, parent_adcode
+    </sql>
+
+    <select id="selectByAdcode" resultMap="regionMap">
+        SELECT <include refid="baseColumns"/>
+        FROM region_code
+        WHERE adcode = #{adcode}
+    </select>
+
+    <select id="selectList" resultMap="regionMap">
+        SELECT <include refid="baseColumns"/>
+        FROM region_code
+        <where>
+            <if test="name != null and name != ''">
+                AND name LIKE CONCAT('%', #{name}, '%')
+            </if>
+        </where>
+        ORDER BY adcode
+        LIMIT #{offset}, #{size}
+    </select>
+
+    <select id="count" resultType="long">
+        SELECT COUNT(*)
+        FROM region_code
+        <where>
+            <if test="name != null and name != ''">
+                AND name LIKE CONCAT('%', #{name}, '%')
+            </if>
+        </where>
+    </select>
+
+    <select id="selectByParent" resultMap="regionMap">
+        SELECT <include refid="baseColumns"/>
+        FROM region_code
+        WHERE parent_adcode = #{parentAdcode}
+        ORDER BY adcode
+    </select>
+
+    <insert id="insertBatch">
+        INSERT INTO region_code (name, adcode, citycode, level, parent_adcode)
+        VALUES
+        <foreach collection="list" item="r" separator=",">
+            (#{r.name}, #{r.adcode}, #{r.citycode}, #{r.level}, #{r.parentAdcode})
+        </foreach>
+    </insert>
+</mapper>

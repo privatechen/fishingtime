@@ -38,6 +38,9 @@ class AuthControllerTest {
     @MockBean
     private UserService userService;
 
+    @MockBean
+    private com.fishingtime.region.mapper.RegionMapper regionMapper;
+
     /**
      * Mock UserMapper 以通过 MyBatis 加载
      * 注：application-test.yml 已排除 DataSource/MyBatis 自动配置，

@@ -1,14 +1,22 @@
 /** 热榜条目 */
 export interface HotItem {
-  platform: 'weibo' | 'baidu' | 'zhihu'
+  platform: 'weibo' | 'baidu' | 'zhihu' | 'hupu'
   rank: number
   title: string
-  hot: string
+  hot?: string
   tag?: string
   /** 详情链接 */
   url?: string
   /** 统一热度值，用于排序 */
   normalizedHotScore?: number
+  /** 回复数（虎扑） */
+  replyCount?: number
+  /** 浏览数（虎扑） */
+  viewCount?: number
+  /** 作者（虎扑） */
+  author?: string
+  /** 发布时间（虎扑） */
+  publishTime?: string
 }
 
 /** 社区推荐帖子 */
@@ -32,6 +40,7 @@ export const PLATFORM_MAP: Record<string, { name: string; color: string }> = {
   weibo: { name: '微博热搜', color: '#e74c3c' },
   baidu: { name: '百度热搜', color: '#2d8cf0' },
   zhihu: { name: '知乎热榜', color: '#1a7ae0' },
+  hupu: { name: '虎扑热榜', color: '#f58718' },
 }
 
 /* ============ Auth ============ */

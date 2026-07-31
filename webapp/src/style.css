@@ -23,6 +23,15 @@
   --shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
   --shadow-hover: 0 4px 20px rgba(0, 0, 0, 0.1);
   --max-width: 1200px;
+
+  /* 响应式字体 */
+  --font-base: clamp(13px, 1.6vw, 15px);
+  --font-hero: clamp(24px, 4.5vw, 48px);
+  --font-hero-sub: clamp(14px, 2vw, 18px);
+  --font-title: clamp(15px, 1.8vw, 20px);
+  --space-sm: clamp(8px, 1.2vw, 12px);
+  --space-md: clamp(12px, 2vw, 24px);
+  --space-lg: clamp(20px, 3vw, 40px);
 }
 
 * {
@@ -262,16 +271,16 @@ ul {
 }
 
 .hero-title {
-  font-size: 48px;
+  font-size: var(--font-hero);
   font-weight: 800;
   line-height: 1.2;
   margin-bottom: 16px;
 }
 
 .hero-subtitle {
-  font-size: 18px;
+  font-size: var(--font-hero-sub);
   opacity: 0.85;
-  margin-bottom: 32px;
+  margin-bottom: var(--space-lg);
 }
 
 .hero-info {
@@ -396,6 +405,8 @@ ul {
 /* ============ Hot List ============ */
 .hot-list {
   padding: 8px 0;
+  height: 620px;
+  overflow-y: auto;
 }
 
 .hot-item {
@@ -427,6 +438,7 @@ ul {
 .hot-info {
   flex: 1;
   min-width: 0;
+  overflow: hidden;
 }
 
 .hot-title {
@@ -435,6 +447,7 @@ ul {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  max-width: 100%;
 }
 
 .hot-title-link {
@@ -675,6 +688,8 @@ ul {
 }
 
 /* ============ Responsive ============ */
+
+/* 平板 (< 900px) */
 @media (max-width: 900px) {
   .main-content {
     flex-direction: column;
@@ -688,8 +703,8 @@ ul {
     display: none;
   }
 
-  .hero-title {
-    font-size: 32px;
+  .hero-info {
+    gap: var(--space-md);
   }
 
   .nav {
@@ -703,5 +718,144 @@ ul {
 
   .search-box {
     display: none;
+  }
+
+  .hero-content {
+    padding: var(--space-lg) var(--space-md);
+  }
+
+  .hot-item {
+    padding: 8px 12px;
+  }
+}
+
+/* 手机 (< 600px) */
+@media (max-width: 600px) {
+  :root {
+    --header-height: 52px;
+  }
+
+  .header-inner {
+    gap: 12px;
+  }
+
+  .logo span {
+    display: none;
+  }
+
+  .nav-link {
+    padding: 6px 8px;
+    font-size: 12px;
+  }
+
+  .btn {
+    padding: 6px 12px;
+    font-size: 12px;
+  }
+
+  .hero {
+    margin-top: var(--header-height);
+  }
+
+  .hero-inner {
+    min-height: 200px;
+  }
+
+  .hero-content {
+    padding: var(--space-md) var(--space-sm);
+    flex-direction: column;
+    gap: var(--space-sm);
+  }
+
+  .hero-title {
+    font-size: clamp(20px, 6vw, 28px);
+  }
+
+  .hero-info {
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .main-content {
+    padding: 8px 8px;
+    gap: 12px;
+  }
+
+  .main-right {
+    gap: 12px;
+  }
+
+  .card-header,
+  .sidebar-card-header {
+    padding: 10px 14px;
+    font-size: 14px;
+  }
+
+  .sidebar-card-body {
+    padding: 8px 14px;
+  }
+
+  .hot-tab {
+    padding: 10px 8px;
+    font-size: 13px;
+  }
+
+  .hot-item {
+    padding: 8px 10px;
+    gap: 8px;
+  }
+
+  .hot-list {
+    height: 480px;
+  }
+
+  .hot-title {
+    font-size: 13px;
+  }
+
+  .hot-count {
+    font-size: 11px;
+  }
+
+  .card-header {
+    padding: 10px 14px;
+    font-size: 14px;
+  }
+
+  .game-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+
+  .game-card-item {
+    padding: 10px 4px;
+  }
+
+  .game-card-icon {
+    font-size: 24px;
+  }
+
+  .game-card-name {
+    font-size: 11px;
+  }
+
+  .game-card-desc {
+    display: none;
+  }
+
+  .community-item {
+    padding: 8px 0;
+  }
+
+  .community-title {
+    font-size: 13px;
+  }
+
+  .auth-card {
+    width: 90%;
+    padding: 24px;
+  }
+
+  .hero-content {
+    padding: 30px 16px;
   }
 }

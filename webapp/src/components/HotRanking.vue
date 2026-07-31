@@ -2,7 +2,7 @@
 import { ref, onMounted } from 'vue'
 import type { HotItem } from '@/types'
 import { PLATFORM_MAP } from '@/types'
-import { fetchHotList, fetchBaiduHot, fetchZhihuHot, fetchWeiboHot } from '@/api'
+import { fetchHotList, fetchBaiduHot, fetchZhihuHot, fetchWeiboHot, fetchHupuHot } from '@/api'
 
 const platforms = Object.keys(PLATFORM_MAP)
 const activePlatform = ref('weibo')
@@ -43,11 +43,16 @@ async function load(platform: string) {
       result = await fetchZhihuHot()
     } else if (platform === 'weibo') {
       result = await fetchWeiboHot()
+    } else if (platform === 'hupu') {
+      result = await fetchHupuHot()
     } else {
       result = { data: await fetchHotList(platform) }
     }
 
-    result.data.sort((a, b) => (b.normalizedHotScore ?? 0) - (a.normalizedHotScore ?? 0))
+    // 有热度值的平台按 normalizedHotScore 降序排列；虎扑无热度值保持原顺序
+    if (result.data.some((item) => item.normalizedHotScore !== undefined)) {
+      result.data.sort((a, b) => (b.normalizedHotScore ?? 0) - (a.normalizedHotScore ?? 0))
+    }
 
     // 更新缓存
     cache.set(platform, {
@@ -116,8 +121,15 @@ onMounted(() => load('weibo'))
           </a>
           <span v-else class="hot-title">{{ item.title }}</span>
           <div class="hot-meta">
-            <span class="hot-count">🔥 {{ item.normalizedHotScore ?? 0 }}</span>
-            <span v-if="item.tag" class="hot-tag">{{ item.tag }}</span>
+            <!-- 有热度值才显示 🔥 -->
+            <span v-if="item.normalizedHotScore !== undefined" class="hot-count">🔥 {{ item.normalizedHotScore }}</span>
+            <!-- 虎扑：显示回复/浏览/作者/时间 -->
+            <template v-if="item.platform === 'hupu'">
+              <span v-if="item.replyCount !== undefined" class="hot-count">💬 {{ item.replyCount }}</span>
+              <span v-if="item.viewCount !== undefined" class="hot-count">👁 {{ item.viewCount }}</span>
+              <span v-if="item.publishTime" class="hot-count">{{ item.publishTime }}</span>
+            </template>
+            <span v-if="item.tag && item.platform !== 'hupu'" class="hot-tag">{{ item.tag }}</span>
           </div>
         </div>
       </div>

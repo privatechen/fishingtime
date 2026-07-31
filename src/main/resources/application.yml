@@ -22,3 +22,14 @@ mybatis:
   configuration:
     map-underscore-to-camel-case: true
     log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+
+# 高德地图配置（Key 仅后端可见）
+amap:
+  key: b496b1e3d38a1be0502d2f41800aa423
+  ip-api: https://restapi.amap.com/v3/ip
+  weather-api: https://restapi.amap.com/v3/weather/weatherInfo
+
+# 天气配置
+weather:
+  default-adcode: 110000
+  timeout-ms: 2000

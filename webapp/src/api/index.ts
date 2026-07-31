@@ -76,6 +76,21 @@ export async function fetchWeiboHot(): Promise<HotApiResult> {
   }))
 }
 
+export async function fetchHupuHot(): Promise<HotApiResult> {
+  return fetchHotFromApi('hupu', (item: any, index: number) => ({
+    platform: 'hupu' as const,
+    rank: item.rank ?? (index + 1),
+    title: item.title ?? '',
+    url: item.url ?? '',
+    replyCount: item.replyCount,
+    viewCount: item.viewCount,
+    author: item.author,
+    publishTime: item.publishTime,
+    // 虎扑按回复时间排序，无热度值
+    normalizedHotScore: undefined,
+  }))
+}
+
 export async function fetchAllPlatforms(): Promise<Record<string, HotItem[]>> {
   await delay(300)
   return hotData

@@ -148,7 +148,11 @@ public class BaiduHotCrawler implements HotCrawler {
 
             int rank = 1;
             for (Element item : items) {
-                String title = item.select("[class*=content]").text();
+                // 优先取 .c-single-text-ellipsis（仅标题），兜底取所有内容
+                String title = item.select(".c-single-text-ellipsis").text();
+                if (title.isEmpty()) {
+                    title = item.select("[class*=content]").text();
+                }
                 String hotScore = item.select("[class*=hot-index]").text();
                 String url = item.select("a").attr("href");
 
