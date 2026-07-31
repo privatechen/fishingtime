@@ -35,6 +35,9 @@ class UserControllerTest {
     @org.springframework.boot.test.mock.mockito.MockBean
     private com.fishingtime.region.mapper.RegionMapper regionMapper;
 
+    @org.springframework.boot.test.mock.mockito.MockBean
+    private javax.sql.DataSource dataSource;
+
     @Test
     @DisplayName("获取用户信息 — 成功")
     void getUserSuccess() throws Exception {
