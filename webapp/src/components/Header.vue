@@ -13,7 +13,7 @@ const navItems = [
   { name: '首页', path: '/', key: 'home' },
   { name: '热榜', path: '/', key: 'hot' },
   { name: '社区', path: '/', key: 'community' },
-  { name: '小游戏', path: '/', key: 'game' },
+  { name: '小游戏', path: '/games', key: 'game' },
 ]
 
 function handleScroll() {

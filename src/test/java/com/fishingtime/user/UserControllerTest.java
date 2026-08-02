@@ -41,6 +41,9 @@ class UserControllerTest {
     @org.springframework.boot.test.mock.mockito.MockBean
     private com.fishingtime.banner.mapper.DailySentenceMapper dailySentenceMapper;
 
+    @MockBean
+    private com.fishingtime.game.mapper.Game2048ScoreMapper game2048ScoreMapper;
+
     @Test
     @DisplayName("获取用户信息 — 成功")
     void getUserSuccess() throws Exception {

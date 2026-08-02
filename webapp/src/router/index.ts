@@ -19,6 +19,16 @@ const router = createRouter({
       name: 'register',
       component: () => import('@/views/RegisterView.vue'),
     },
+    {
+      path: '/games',
+      name: 'games',
+      component: () => import('@/games/components/hall/GameHall.vue'),
+    },
+    {
+      path: '/games/2048',
+      name: 'game2048',
+      component: () => import('@/games/components/2048/Game2048.vue'),
+    },
   ],
 })
 

@@ -9,7 +9,7 @@ export default defineConfig({
       '@': resolve(__dirname, 'src'),
     },
   },
-  base: '',
+  base: '/',
   build: {
     outDir: resolve(__dirname, '../src/main/resources/static'),
     emptyOutDir: true,

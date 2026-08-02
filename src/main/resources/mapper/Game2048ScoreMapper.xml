@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.fishingtime.game.mapper.Game2048ScoreMapper">
+
+    <resultMap id="scoreMap" type="com.fishingtime.game.domain.Game2048Score">
+        <id column="id" property="id"/>
+        <result column="user_id" property="userId"/>
+        <result column="nickname" property="nickname"/>
+        <result column="best_score" property="bestScore"/>
+        <result column="max_tile" property="maxTile"/>
+        <result column="achieved_at" property="achievedAt"/>
+        <result column="created_at" property="createdAt"/>
+        <result column="updated_at" property="updatedAt"/>
+    </resultMap>
+
+    <select id="selectByUserId" resultMap="scoreMap">
+        SELECT * FROM game_2048_score WHERE user_id = #{userId}
+    </select>
+
+    <insert id="insert" parameterType="com.fishingtime.game.domain.Game2048Score"
+            useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO game_2048_score (user_id, nickname, best_score, max_tile, achieved_at)
+        VALUES (#{userId}, #{nickname}, #{bestScore}, #{maxTile}, NOW())
+    </insert>
+
+    <update id="updateBest">
+        UPDATE game_2048_score
+        SET nickname = #{nickname}, best_score = #{bestScore}, max_tile = #{maxTile}, achieved_at = NOW()
+        WHERE user_id = #{userId} AND best_score &lt; #{bestScore}
+    </update>
+
+    <select id="selectTopRank" resultMap="scoreMap">
+        SELECT * FROM game_2048_score
+        ORDER BY best_score DESC, achieved_at ASC
+        LIMIT #{limit}
+    </select>
+
+    <!-- 排行榜：昵称冗余在表中，直接读取 -->
+    <select id="selectRank" resultType="java.util.HashMap">
+        SELECT
+            best_score AS bestScore,
+            max_tile AS maxTile,
+            achieved_at AS achievedAt,
+            nickname AS nickname
+        FROM game_2048_score
+        ORDER BY best_score DESC, achieved_at ASC
+        LIMIT #{limit}
+    </select>
+</mapper>

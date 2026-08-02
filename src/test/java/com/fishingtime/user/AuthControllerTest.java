@@ -47,6 +47,9 @@ class AuthControllerTest {
     @MockBean
     private com.fishingtime.banner.mapper.DailySentenceMapper dailySentenceMapper;
 
+    @MockBean
+    private com.fishingtime.game.mapper.Game2048ScoreMapper game2048ScoreMapper;
+
     /**
      * Mock UserMapper 以通过 MyBatis 加载
      * 注：application-test.yml 已排除 DataSource/MyBatis 自动配置，
