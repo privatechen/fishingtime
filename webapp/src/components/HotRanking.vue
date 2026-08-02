@@ -3,6 +3,8 @@ import { ref, onMounted } from 'vue'
 import type { HotItem } from '@/types'
 import { PLATFORM_MAP } from '@/types'
 import { fetchHotList, fetchBaiduHot, fetchZhihuHot, fetchWeiboHot, fetchHupuHot } from '@/api'
+import commentIcon from '@/assets/png/评论_100k.png'
+import viewIcon from '@/assets/png/阅读量_100k.png'
 
 const platforms = Object.keys(PLATFORM_MAP)
 const activePlatform = ref('weibo')
@@ -125,8 +127,12 @@ onMounted(() => load('weibo'))
             <span v-if="item.normalizedHotScore !== undefined" class="hot-count">🔥 {{ item.normalizedHotScore }}</span>
             <!-- 虎扑：显示回复/浏览/作者/时间 -->
             <template v-if="item.platform === 'hupu'">
-              <span v-if="item.replyCount !== undefined" class="hot-count">💬 {{ item.replyCount }}</span>
-              <span v-if="item.viewCount !== undefined" class="hot-count">👁 {{ item.viewCount }}</span>
+              <span v-if="item.replyCount !== undefined" class="hot-count">
+                <img :src="commentIcon" class="count-icon" alt="" /> {{ item.replyCount }}
+              </span>
+              <span v-if="item.viewCount !== undefined" class="hot-count">
+                <img :src="viewIcon" class="count-icon" alt="" /> {{ item.viewCount }}
+              </span>
               <span v-if="item.publishTime" class="hot-count">{{ item.publishTime }}</span>
             </template>
             <span v-if="item.tag && item.platform !== 'hupu'" class="hot-tag">{{ item.tag }}</span>

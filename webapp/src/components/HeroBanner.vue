@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
 import bgImage from '@/assets/png/hero/herobanner_bg.png'
+import { getWeatherIcon } from '@/utils/weatherIcon'
 
 interface WeatherData {
   province: string
@@ -14,6 +15,7 @@ const today = ref('')
 const fishIndex = ref(78)
 const weather = ref<WeatherData | null>(null)
 const sentence = ref('')
+const weatherIcon = ref('')
 let weatherTimer: number | null = null
 
 async function fetchWeather() {
@@ -21,8 +23,10 @@ async function fetchWeather() {
     const res = await fetch('/api/weather', { credentials: 'same-origin' })
     const json = await res.json()
     weather.value = (json.code === 200 && json.data) ? json.data : null
+    weatherIcon.value = weather.value ? getWeatherIcon(weather.value.weather) : ''
   } catch {
     weather.value = null // 失败隐藏，不影响其他模块
+    weatherIcon.value = ''
   }
 }
 
@@ -59,9 +63,12 @@ onUnmounted(() => {
       <div class="hero-content">
         <div class="hero-text">
           <h1 class="hero-title">Fishing...</h1>
-          <p v-if="sentence" class="hero-sentence"> {{ sentence }}</p>
 
-          <!-- 今日一句 -->
+          <!-- 今日一句（紧跟标题） -->
+          <div v-if="sentence" class="sentence-card"> {{ sentence }}</div>
+
+          <!-- 天气信息卡片 -->
+          <div class="weather-card">
           <div class="hero-info">
             <div class="hero-info-item">
               <span class="hero-info-label">📅 今天</span>
@@ -71,6 +78,7 @@ onUnmounted(() => {
             <div v-if="weather" class="hero-info-item">
               <span class="hero-info-label">📍 {{ weather.province }}·{{ weather.city }}</span>
               <span class="hero-info-value">
+                <img v-if="weatherIcon" :src="weatherIcon" class="weather-icon" alt="" />
                 {{ weather.weather }} {{ weather.temperature }}℃ · 💧 {{ weather.humidity }}%
               </span>
             </div>
@@ -78,6 +86,7 @@ onUnmounted(() => {
               <span class="hero-info-label">🐟 今日摸鱼指数</span>
               <span class="hero-info-value">{{ fishIndex }}%</span>
             </div>
+          </div>
           </div>
         </div>
       </div>
