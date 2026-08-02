@@ -39,10 +39,13 @@ class AuthControllerTest {
     private UserService userService;
 
     @MockBean
-    private com.fishingtime.region.mapper.RegionMapper regionMapper;
+    private com.fishingtime.banner.mapper.RegionMapper regionMapper;
 
     @MockBean
     private javax.sql.DataSource dataSource;
+
+    @MockBean
+    private com.fishingtime.banner.mapper.DailySentenceMapper dailySentenceMapper;
 
     /**
      * Mock UserMapper 以通过 MyBatis 加载

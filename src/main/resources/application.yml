@@ -18,7 +18,7 @@ spring:
 
 mybatis:
   mapper-locations: classpath:mapper/*.xml
-  type-aliases-package: com.fishingtime.user.domain
+  type-aliases-package: com.fishingtime.user.domain,com.fishingtime.banner.domain
   configuration:
     map-underscore-to-camel-case: true
     log-impl: org.apache.ibatis.logging.stdout.StdOutImpl

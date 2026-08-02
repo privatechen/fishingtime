@@ -13,6 +13,7 @@ interface WeatherData {
 const today = ref('')
 const fishIndex = ref(78)
 const weather = ref<WeatherData | null>(null)
+const sentence = ref('')
 let weatherTimer: number | null = null
 
 async function fetchWeather() {
@@ -25,9 +26,22 @@ async function fetchWeather() {
   }
 }
 
+async function fetchSentence() {
+  try {
+    const res = await fetch('/api/daily-sentence/random', { credentials: 'same-origin' })
+    const json = await res.json()
+    sentence.value = (json.code === 200 && json.data && json.data.content) ? json.data.content : ''
+  } catch {
+    sentence.value = '' // 失败隐藏，不影响其他模块
+  }
+}
+
 onMounted(() => {
   const now = new Date()
   today.value = `${now.getFullYear()}年${now.getMonth() + 1}月${now.getDate()}日`
+
+  // 今日一句
+  fetchSentence()
 
   // 立即获取天气，之后每 10 分钟刷新一次
   fetchWeather()
@@ -44,10 +58,10 @@ onUnmounted(() => {
     <div class="hero-inner" :style="{ backgroundColor: '#f0f2f5', backgroundImage: `url(${bgImage})` }">
       <div class="hero-content">
         <div class="hero-text">
-          <h1 class="hero-title">摸鱼啦～<br />FishingTime</h1>
-          <p class="hero-subtitle">
-            钓鱼爱好者的聚集地，聊聊钓鱼、分享生活、发现乐趣
-          </p>
+          <h1 class="hero-title">Fishing...</h1>
+          <p v-if="sentence" class="hero-sentence"> {{ sentence }}</p>
+
+          <!-- 今日一句 -->
           <div class="hero-info">
             <div class="hero-info-item">
               <span class="hero-info-label">📅 今天</span>

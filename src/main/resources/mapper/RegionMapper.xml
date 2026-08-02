@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
-<mapper namespace="com.fishingtime.region.mapper.RegionMapper">
+<mapper namespace="com.fishingtime.banner.mapper.RegionMapper">
 
-    <resultMap id="regionMap" type="com.fishingtime.region.domain.Region">
+    <resultMap id="regionMap" type="com.fishingtime.banner.domain.Region">
         <id column="id" property="id"/>
         <result column="name" property="name"/>
         <result column="adcode" property="adcode"/>

@@ -33,10 +33,13 @@ class UserControllerTest {
     private com.fishingtime.user.mapper.UserMapper userMapper;
 
     @org.springframework.boot.test.mock.mockito.MockBean
-    private com.fishingtime.region.mapper.RegionMapper regionMapper;
+    private com.fishingtime.banner.mapper.RegionMapper regionMapper;
 
     @org.springframework.boot.test.mock.mockito.MockBean
     private javax.sql.DataSource dataSource;
+
+    @org.springframework.boot.test.mock.mockito.MockBean
+    private com.fishingtime.banner.mapper.DailySentenceMapper dailySentenceMapper;
 
     @Test
     @DisplayName("获取用户信息 — 成功")
