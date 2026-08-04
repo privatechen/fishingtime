@@ -3,6 +3,7 @@ package com.fishingtime.user.service;
 import com.fishingtime.auth.CurrentUserInfo;
 import com.fishingtime.user.dto.LoginRequest;
 import com.fishingtime.user.dto.RegisterRequest;
+import com.fishingtime.user.dto.UpdateProfileDTO;
 import com.fishingtime.user.dto.UserDTO;
 
 /**
@@ -26,4 +27,15 @@ public interface UserService {
      * 根据 ID 获取用户信息
      */
     UserDTO getUserById(Long id);
+
+    /**
+     * 获取当前用户完整资料（含邮箱等）
+     */
+    UserDTO getProfile(Long userId);
+
+    /**
+     * 更新个人资料
+     * @return 更新后的用户信息
+     */
+    UserDTO updateProfile(Long userId, UpdateProfileDTO dto);
 }

@@ -6,7 +6,6 @@
     <resultMap id="scoreMap" type="com.fishingtime.game.domain.Game2048Score">
         <id column="id" property="id"/>
         <result column="user_id" property="userId"/>
-        <result column="nickname" property="nickname"/>
         <result column="best_score" property="bestScore"/>
         <result column="max_tile" property="maxTile"/>
         <result column="achieved_at" property="achievedAt"/>
@@ -20,13 +19,13 @@
 
     <insert id="insert" parameterType="com.fishingtime.game.domain.Game2048Score"
             useGeneratedKeys="true" keyProperty="id">
-        INSERT INTO game_2048_score (user_id, nickname, best_score, max_tile, achieved_at)
-        VALUES (#{userId}, #{nickname}, #{bestScore}, #{maxTile}, NOW())
+        INSERT INTO game_2048_score (user_id, best_score, max_tile, achieved_at)
+        VALUES (#{userId}, #{bestScore}, #{maxTile}, NOW())
     </insert>
 
     <update id="updateBest">
         UPDATE game_2048_score
-        SET nickname = #{nickname}, best_score = #{bestScore}, max_tile = #{maxTile}, achieved_at = NOW()
+        SET best_score = #{bestScore}, max_tile = #{maxTile}, achieved_at = NOW()
         WHERE user_id = #{userId} AND best_score &lt; #{bestScore}
     </update>
 
@@ -36,15 +35,16 @@
         LIMIT #{limit}
     </select>
 
-    <!-- 排行榜：昵称冗余在表中，直接读取 -->
+    <!-- 排行榜：JOIN user 表反查昵称 -->
     <select id="selectRank" resultType="java.util.HashMap">
         SELECT
-            best_score AS bestScore,
-            max_tile AS maxTile,
-            achieved_at AS achievedAt,
-            nickname AS nickname
-        FROM game_2048_score
-        ORDER BY best_score DESC, achieved_at ASC
+            s.best_score AS bestScore,
+            s.max_tile AS maxTile,
+            s.achieved_at AS achievedAt,
+            u.nickname AS nickname
+        FROM game_2048_score s
+        LEFT JOIN user u ON u.id = s.user_id
+        ORDER BY s.best_score DESC, s.achieved_at ASC
         LIMIT #{limit}
     </select>
 </mapper>

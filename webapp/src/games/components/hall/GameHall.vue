@@ -1,19 +1,38 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { games } from '@/games/config/games'
-import { gameScoreStore } from '@/games/stores/gameScore'
+import { useAuth } from '@/stores/auth'
 import GameCard from './GameCard.vue'
 import Header from '@/components/Header.vue'
 import Footer from '@/components/Footer.vue'
 
+const { isLoggedIn } = useAuth()
+
 const toastMsg = ref('')
 const toastVisible = ref(false)
+/** 当前用户各游戏最高分（登录后从后端加载） */
+const bestMap = ref<Record<string, number>>({})
 let toastTimer: number | null = null
 
-/** 每个游戏的个人最佳（当前用本地最高分） */
+/** 登录用户加载各游戏个人最佳；游客不展示 */
+async function loadBestScores() {
+  bestMap.value = {}
+  if (!isLoggedIn.value) return
+  try {
+    const res = await fetch('/api/games/2048/my-best', { credentials: 'same-origin' })
+    const json = await res.json()
+    if (json.code === 200 && json.data) {
+      bestMap.value['2048'] = json.data.bestScore ?? 0
+    }
+  } catch {
+    // 加载失败不展示
+  }
+}
+
+/** 每个游戏的个人最佳（游客不显示） */
 function bestFor(gameId: string): number | undefined {
-  if (gameId === '2048') return gameScoreStore.loadBest()
-  return undefined
+  const v = bestMap.value[gameId]
+  return v !== undefined ? v : undefined
 }
 
 function showToast(msg: string) {
@@ -26,6 +45,8 @@ function showToast(msg: string) {
 function handleMyRecords() {
   showToast('功能开发中，敬请期待～')
 }
+
+onMounted(loadBestScores)
 </script>
 
 <template>

@@ -18,5 +18,5 @@ public interface Game2048ScoreService {
     Game2048Score getMyBest(Long userId);
 
     /** 提交最高分（仅当高于当前记录时更新） */
-    void submitScore(Long userId, String nickname, ScoreSubmitDTO dto);
+    void submitScore(Long userId, ScoreSubmitDTO dto);
 }

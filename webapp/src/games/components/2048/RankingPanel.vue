@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 
 interface RankItem {
   rank: number
@@ -7,11 +7,13 @@ interface RankItem {
   bestScore: number
 }
 
+const props = defineProps<{ refreshKey: number }>()
+
 const rankList = ref<RankItem[]>([])
 const loading = ref(false)
 const errorMsg = ref('')
 
-onMounted(async () => {
+async function load() {
   loading.value = true
   try {
     const res = await fetch('/api/games/2048/rank', { credentials: 'same-origin' })
@@ -26,7 +28,11 @@ onMounted(async () => {
   } finally {
     loading.value = false
   }
-})
+}
+
+// 初始加载 + refreshKey 变化时重新拉取
+onMounted(load)
+watch(() => props.refreshKey, load)
 </script>
 
 <template>

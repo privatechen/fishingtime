@@ -63,7 +63,7 @@ onUnmounted(() => window.removeEventListener('scroll', handleScroll))
 
         <!-- 已登录 -->
         <template v-if="isLoggedIn">
-          <span class="header-nickname">{{ user?.nickname }}</span>
+          <router-link to="/profile" class="header-nickname">{{ user?.nickname }}</router-link>
           <button class="btn btn-outline" @click="handleLogout">退出</button>
         </template>
 
@@ -82,5 +82,11 @@ onUnmounted(() => window.removeEventListener('scroll', handleScroll))
   font-size: 14px;
   font-weight: 500;
   color: var(--color-text);
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.header-nickname:hover {
+  color: var(--color-primary);
 }
 </style>

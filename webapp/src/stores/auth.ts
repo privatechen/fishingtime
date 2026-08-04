@@ -75,6 +75,10 @@ export function useAuth() {
       await authApi.logout()
     } finally {
       state.user = null
+      // 退出登录：清空游戏本地数据（棋盘/分数/最高分），避免下一用户看到上一用户成绩
+      localStorage.removeItem('game2048:board')
+      localStorage.removeItem('game2048:score')
+      localStorage.removeItem('game2048:best')
     }
   }
 

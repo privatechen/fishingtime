@@ -12,7 +12,6 @@ public class Game2048Score {
 
     private Long id;
     private Long userId;
-    private String nickname;
     private Integer bestScore;
     private Integer maxTile;
     private LocalDateTime achievedAt;

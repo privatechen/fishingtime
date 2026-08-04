@@ -6,6 +6,7 @@ import com.fishingtime.common.exception.BusinessException;
 import com.fishingtime.user.domain.User;
 import com.fishingtime.user.dto.LoginRequest;
 import com.fishingtime.user.dto.RegisterRequest;
+import com.fishingtime.user.dto.UpdateProfileDTO;
 import com.fishingtime.user.dto.UserDTO;
 import com.fishingtime.user.mapper.UserMapper;
 import com.fishingtime.user.service.UserService;
@@ -77,6 +78,33 @@ public class UserServiceImpl implements UserService {
         if (user == null) {
             throw new BusinessException(ErrorCode.USER_NOT_FOUND);
         }
+        return toDTO(user);
+    }
+
+    @Override
+    public UserDTO getProfile(Long userId) {
+        return getUserById(userId);
+    }
+
+    @Override
+    public UserDTO updateProfile(Long userId, UpdateProfileDTO dto) {
+        User user = userMapper.selectById(userId);
+        if (user == null) {
+            throw new BusinessException(ErrorCode.USER_NOT_FOUND);
+        }
+
+        // 检查用户名是否与其他用户冲突（排除自己）
+        User existing = userMapper.selectByUsername(dto.getUsername());
+        if (existing != null && !existing.getId().equals(userId)) {
+            throw new BusinessException(ErrorCode.USERNAME_EXISTS);
+        }
+
+        user.setUsername(dto.getUsername());
+        user.setNickname(dto.getNickname());
+        user.setEmail(dto.getEmail());
+        userMapper.updateProfile(user);
+
+        log.info("用户更新资料: userId={}", userId);
         return toDTO(user);
     }
 

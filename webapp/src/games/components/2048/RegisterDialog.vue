@@ -12,16 +12,6 @@ const confirmPassword = ref('')
 const errorMsg = ref('')
 const submitting = ref(false)
 
-/** 生成 16 位随机字母昵称 */
-function genNickname(): string {
-  const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ'
-  let s = ''
-  for (let i = 0; i < 16; i++) {
-    s += chars[Math.floor(Math.random() * chars.length)]
-  }
-  return s
-}
-
 async function handleSubmit() {
   errorMsg.value = ''
 
@@ -43,7 +33,7 @@ async function handleSubmit() {
     const err = await register({
       username: username.value.trim(),
       password: password.value,
-      nickname: genNickname(),
+      nickname: username.value.trim(), // 昵称直接用账号
     })
     if (err) {
       errorMsg.value = err

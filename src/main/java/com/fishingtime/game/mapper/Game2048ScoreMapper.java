@@ -17,13 +17,12 @@ public interface Game2048ScoreMapper {
     void insert(Game2048Score score);
 
     void updateBest(@Param("userId") Long userId,
-                    @Param("nickname") String nickname,
                     @Param("bestScore") Integer bestScore,
                     @Param("maxTile") Integer maxTile);
 
     /** 排行榜 Top20：分降序，同分按达成时间升序 */
     List<Game2048Score> selectTopRank(@Param("limit") int limit);
 
-    /** 排行榜（昵称冗余在表中，直接读取） */
+    /** 排行榜（JOIN user 表反查昵称） */
     List<java.util.Map<String, Object>> selectRank(@Param("limit") int limit);
 }

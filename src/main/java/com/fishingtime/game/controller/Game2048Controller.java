@@ -47,7 +47,7 @@ public class Game2048Controller {
         if (currentUser == null) {
             return ApiResponse.error(com.fishingtime.common.dto.ErrorCode.UNAUTHORIZED);
         }
-        scoreService.submitScore(currentUser.getUserId(), currentUser.getNickname(), dto);
+        scoreService.submitScore(currentUser.getUserId(), dto);
         return ApiResponse.success();
     }
 }

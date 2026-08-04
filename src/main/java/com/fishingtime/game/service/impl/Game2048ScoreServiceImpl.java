@@ -50,21 +50,20 @@ public class Game2048ScoreServiceImpl implements Game2048ScoreService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public void submitScore(Long userId, String nickname, ScoreSubmitDTO dto) {
+    public void submitScore(Long userId, ScoreSubmitDTO dto) {
         if (dto.getBestScore() == null) return;
 
         Game2048Score existing = scoreMapper.selectByUserId(userId);
         if (existing == null) {
             Game2048Score score = new Game2048Score();
             score.setUserId(userId);
-            score.setNickname(nickname);
             score.setBestScore(dto.getBestScore());
             score.setMaxTile(dto.getMaxTile());
             scoreMapper.insert(score);
             log.info("[2048] 用户 {} 首次提交分数 {}", userId, dto.getBestScore());
         } else {
             if (dto.getBestScore() > existing.getBestScore()) {
-                scoreMapper.updateBest(userId, nickname, dto.getBestScore(), dto.getMaxTile());
+                scoreMapper.updateBest(userId, dto.getBestScore(), dto.getMaxTile());
                 log.info("[2048] 用户 {} 更新最高分 {}", userId, dto.getBestScore());
             }
         }

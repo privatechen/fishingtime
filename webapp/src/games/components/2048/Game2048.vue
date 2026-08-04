@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, watch } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { Game2048Engine, type Direction, type BoardTile } from '@/games/engine/2048/Game2048Engine'
 import { gameScoreStore } from '@/games/stores/gameScore'
@@ -19,12 +19,14 @@ const engine = new Game2048Engine()
 const tiles = ref<BoardTile[]>([])
 const newTileIds = ref<number[]>([])
 const score = ref(0)
+/** 当前游戏的最高分（本局峰值，重新开始后归零） */
 const best = ref(0)
 const showRule = ref(false)
 const showRestart = ref(false)
 const showRegister = ref(false)
 const showWin = ref(false)
 const showGameOver = ref(false)
+const rankingKey = ref(0)
 const toastMsg = ref('')
 const toastVisible = ref(false)
 let toastTimer: number | null = null
@@ -33,7 +35,7 @@ function syncUI() {
   tiles.value = engine.getTiles()
   newTileIds.value = []
   score.value = engine.getScore()
-  best.value = Math.max(gameScoreStore.loadBest(), score.value)
+  best.value = Math.max(best.value, score.value)
   gameScoreStore.saveBoard(engine.getBoardValues())
   gameScoreStore.saveScore(score.value)
 }
@@ -46,10 +48,9 @@ function handleMove(direction: Direction) {
   tiles.value = engine.getTiles()
   newTileIds.value = result.newTileIds
   score.value = engine.getScore()
-  best.value = Math.max(gameScoreStore.loadBest(), score.value)
+  best.value = Math.max(best.value, score.value)
   gameScoreStore.saveBoard(engine.getBoardValues())
   gameScoreStore.saveScore(score.value)
-  gameScoreStore.saveBest(engine.getScore())
 
   // 胜利检测
   if (!showWin.value && engine.getMaxTile() >= 2048) {
@@ -77,6 +78,7 @@ function onKeydown(e: KeyboardEvent) {
 function restartGame() {
   engine.init()
   gameScoreStore.clearCurrent()
+  best.value = 0 // 本局最高分归零
   showWin.value = false
   showGameOver.value = false
   syncUI()
@@ -89,51 +91,58 @@ function showToast(msg: string) {
   toastTimer = window.setTimeout(() => (toastVisible.value = false), 2500)
 }
 
-// 刷新时重置游戏进度（最高分保留）
+// 刷新时重置游戏进度（本局最高分归零）
 function startFresh() {
   engine.init()
   gameScoreStore.clearCurrent()
+  best.value = 0
   syncUI()
-  best.value = gameScoreStore.loadBest()
 }
 
-async function submitScore() {
-  // 登录用户同步最高分到后端
+async function submitScore(): Promise<boolean> {
+  // 保存当前这局游戏分数到后端
+  // 注意：发送 score.value（当前局分数），而不是 best.value（可能混入其他用户的 localStorage 最高分）
   try {
-    await fetch('/api/games/2048/score', {
+    const res = await fetch('/api/games/2048/score', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'same-origin',
-      body: JSON.stringify({ bestScore: best.value, maxTile: engine.getMaxTile() }),
+      body: JSON.stringify({ bestScore: score.value, maxTile: engine.getMaxTile() }),
     })
+    const json = await res.json()
+    return json.code === 200
   } catch {
     // 同步失败不影响本地游戏
+    return false
   }
 }
 
-watch(best, (val) => {
-  if (val > gameScoreStore.loadBest()) {
-    submitScore()
+/** 保存成功后的统一处理：刷新排行榜 + 提示 */
+async function saveAndRefresh() {
+  const ok = await submitScore()
+  if (ok) {
+    rankingKey.value++
+    showToast('保存成功')
+  } else {
+    showToast('保存失败')
   }
-})
+}
 
-/** 点击"离开"：保存分数并返回大厅 */
-async function handleLeave() {
+/** 点击"保存"：保存当前分数，不跳转 */
+async function handleSave() {
   if (isLoggedIn.value) {
-    // 已登录 → 直接保存并返回
-    await submitScore()
-    router.push('/games')
+    // 已登录 → 直接保存并刷新排行榜
+    await saveAndRefresh()
   } else {
     // 未登录 → 弹注册框，注册完成后回调保存
     showRegister.value = true
   }
 }
 
-/** 注册完成回调：保存分数并返回大厅 */
+/** 注册完成回调：保存分数并刷新排行榜，不跳转 */
 async function handleRegistered() {
   showRegister.value = false
-  await submitScore()
-  router.push('/games')
+  await saveAndRefresh()
 }
 
 onMounted(() => {
@@ -162,7 +171,7 @@ onUnmounted(() => {
         <ScorePanel :score="score" :best="best" />
         <GameBoard :tiles="tiles" :new-tile-ids="newTileIds" />
         <div class="game-actions">
-          <button class="action-btn" @click="handleLeave">离开</button>
+          <button class="action-btn" @click="handleSave">保存</button>
           <button class="action-btn" @click="showRestart = true">重新开始</button>
           <button class="action-btn" @click="showRule = true">游戏规则</button>
         </div>
@@ -170,7 +179,7 @@ onUnmounted(() => {
       </div>
 
       <!-- 右侧：排行榜 -->
-      <RankingPanel />
+      <RankingPanel :refresh-key="rankingKey" />
     </div>
   </div>
 

@@ -29,6 +29,11 @@ const router = createRouter({
       name: 'game2048',
       component: () => import('@/games/components/2048/Game2048.vue'),
     },
+    {
+      path: '/profile',
+      name: 'profile',
+      component: () => import('@/views/ProfileView.vue'),
+    },
   ],
 })
 

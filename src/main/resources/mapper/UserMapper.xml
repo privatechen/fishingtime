@@ -35,4 +35,12 @@
         FROM user
         WHERE id = #{id}
     </select>
+
+    <update id="updateProfile" parameterType="com.fishingtime.user.domain.User">
+        UPDATE user
+        SET username = #{username},
+            nickname = #{nickname},
+            email = #{email}
+        WHERE id = #{id}
+    </update>
 </mapper>
