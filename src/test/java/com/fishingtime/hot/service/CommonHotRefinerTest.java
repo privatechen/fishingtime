@@ -22,11 +22,14 @@ class CommonHotRefinerTest {
                 entry("toutiao", 7, "台风白海豚到哪了")
         );
 
+        // corpus 加无关噪声标题，让"台风/白海豚"的 IDF 回到正常区间。
+        // 语料过小时（3~4 条）核心词 df 占比高、IDF 低于 MIN_KEYWORD_IDF，会被误过滤；
+        // 生产语料约 150 条不受影响。
         Map<String, List<HotItemDTO>> corpus = Map.of(
                 "weibo", List.of(item(8, "台风白海豚红色预警持续发布")),
                 "baidu", List.of(item(11, "台风白海豚登陆浙江最新路径")),
                 "toutiao", List.of(item(7, "台风白海豚到哪了")),
-                "zhihu", List.of(item(1, "暑期旅游目的地推荐"))
+                "zhihu", List.of(item(1, "暑期旅游目的地推荐"), item(2, "新能源汽车下乡"), item(3, "高校食堂新菜品"))
         );
 
         List<SimilarHotClusterDTO> result = refiner.refine(List.of(raw), corpus);
@@ -66,10 +69,12 @@ class CommonHotRefinerTest {
                 entry("hupu", 21, "上海台风天气讨论")
         );
 
+        // 同样加噪声标题，避免小语料下 IDF 失真误杀核心词
         Map<String, List<HotItemDTO>> corpus = Map.of(
                 "weibo", List.of(item(8, "台风白海豚红色预警")),
                 "baidu", List.of(item(11, "台风白海豚登陆浙江")),
-                "hupu", List.of(item(21, "上海台风天气讨论"))
+                "hupu", List.of(item(21, "上海台风天气讨论")),
+                "zhihu", List.of(item(1, "新能源汽车下乡"), item(2, "高校食堂新菜品"))
         );
 
         List<SimilarHotClusterDTO> result = refiner.refine(List.of(raw), corpus);

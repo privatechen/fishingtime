@@ -59,7 +59,9 @@ class HotSimilarityServiceTest {
 
         assertEquals(1, result.size());
         String title = result.get(0).getTitle();
-        assertFalse(title.contains("年国内手机"));
+        // 标题不得是"年国内手机"这种字符断词拼接。
+        // 用 startsWith 而非 contains：完整标题"上半年国内手机…"也含该子串，但以"上半年"开头。
+        assertFalse(title.startsWith("年国内手机"));
         assertTrue(title.contains("手机") || title.contains("销量"));
     }
 

@@ -3,44 +3,32 @@ package com.fishingtime.hot.service;
 import com.fishingtime.hot.dto.HotItemDTO;
 import com.fishingtime.hot.dto.PlatformHotItemDTO;
 import com.fishingtime.hot.dto.SimilarHotClusterDTO;
-import com.huaban.analysis.jieba.JiebaSegmenter;
+import com.fishingtime.hot.util.HotClusterConstants;
+import com.fishingtime.hot.util.HotTextUtil;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 /**
- * 跨平台共同热点聚类 V1.3。
+ * 跨平台共同热点聚类 V1.4。
  *
- * 与 V1.2 的主要区别：
- * 1. 使用 Jieba 做真正的中文“词级”分词，不再用字符 n-gram 充当关键词；
- * 2. 使用当前热榜语料自动计算 token IDF，不维护人工热点词表；
- * 3. 不再使用并查集，避免 A≈B、B≈C 就把 A/B/C 强行合并的 single-link chaining；
- * 4. 标题加入事件簇时，同时看“与簇中心的相似度”和“与簇内最佳标题的相似度”；
- * 5. 同平台标题可以属于同一事件，但最终仍要求至少两个不同平台才展示；
- * 6. 展示标题只从完整分词 token 中产生，避免“年国内手机”“准中国”这类断词结果；
- * 7. 排序优先看覆盖平台数，其次看各平台排名共识，不再用单个平台最高热力值主导排序。
+ * 与 V1.3 相比：
+ * 1. 分词/清洗/IDF/排名辅助统一收敛到 {@link HotTextUtil}，消除与 CommonHotRefiner 的重复实现；
+ * 2. 决策阈值统一收敛到 {@link HotClusterConstants}；
+ * 3. 新增簇间合并：增量聚类"先到先得"可能把同一事件拆成多个簇，聚类完成后逐对合并相近簇，提高召回。
+ *
+ * 保留的设计要点：
+ * 1. Jieba 做词级分词，不再用字符 n-gram 充当关键词；
+ * 2. 用当前热榜语料自动计算 token IDF，不维护人工热点词表；
+ * 3. 不使用并查集，避免 A≈B、B≈C 把 A/B/C 强行合并的 single-link chaining；
+ * 4. 标题加入事件簇时，同时看"与簇中心相似度"和"与簇内最佳标题相似度"；
+ * 5. 同平台标题可属同一事件，但最终仍要求至少两个不同平台才展示；
+ * 6. 展示标题只从完整分词 token 中产生，避免"年国内手机""准中国"这类断词结果；
+ * 7. 排序优先看覆盖平台数，其次看各平台排名共识。
  */
 @Service
 public class HotSimilarityService {
-
-    private static final double NEW_CLUSTER_MATCH_THRESHOLD = 0.50D;
-    private static final double EXISTING_CLUSTER_MATCH_THRESHOLD = 0.40D;
-    private static final double WEAK_ATTACH_THRESHOLD = 0.32D;
-
-    private static final Pattern CLEAN_TO_SPACE = Pattern.compile("[^\\p{IsHan}a-zA-Z0-9]+");
-    private static final Pattern PURE_NUMBER = Pattern.compile("^\\d+$");
-
-    /** 通用语气/功能停用词，不包含任何具体热点实体。 */
-    private static final Set<String> STOP_WORDS = Set.of(
-            "的", "了", "是", "在", "和", "与", "及", "或", "将", "把", "被", "对", "到", "从", "为", "有", "也",
-            "又", "都", "就", "还", "已", "已是", "正在", "进行", "表示", "回应", "称", "发布", "最新", "目前", "今日",
-            "如何", "怎么", "为什么", "什么", "哪些", "一个", "一名", "网友", "现场", "消息", "视频", "相关", "正式",
-            "预计", "再次", "持续", "成为", "引发", "引热议", "来了", "去哪", "哪了", "能否", "可能", "开始"
-    );
-
-    private final JiebaSegmenter segmenter = new JiebaSegmenter();
 
     public List<SimilarHotClusterDTO> cluster(Map<String, List<HotItemDTO>> platformData) {
         List<Candidate> candidates = buildCandidates(platformData);
@@ -48,10 +36,10 @@ public class HotSimilarityService {
 
         CorpusStats stats = new CorpusStats(candidates);
 
-        // 高热度/高排名标题先成为事件核心，后续标题围绕已有“事件中心”归类。
+        // 高热度/高排名标题先成为事件核心，后续标题围绕已有"事件中心"归类。
         candidates.sort(Comparator
-                .comparingInt((Candidate c) -> safeScore(c.item)).reversed()
-                .thenComparingInt(c -> safeRank(c.item)));
+                .comparingInt((Candidate c) -> HotTextUtil.safeScore(c.item)).reversed()
+                .thenComparingInt(c -> HotTextUtil.safeRank(c.item)));
 
         List<EventCluster> events = new ArrayList<>();
         for (Candidate candidate : candidates) {
@@ -63,9 +51,14 @@ public class HotSimilarityService {
             }
         }
 
-        // 第二遍只处理孤立标题：允许它以“高 IDF 稀有共享词”弱加入一个已经稳定的事件簇。
-        // 解决“中央气象台升级发布台风红色预警”这类没有直接写出“白海豚”的标题。
+        // 第二遍只处理孤立标题：允许它以"高 IDF 稀有共享词"弱加入一个已经稳定的事件簇。
+        // 解决"中央气象台升级发布台风红色预警"这类没有直接写出"白海豚"的标题。
         attachWeakSingletons(events, stats);
+
+        // 簇间合并：修复增量聚类把同一事件拆成多个簇的召回缺口。
+        if (HotClusterConstants.CLUSTER_MERGE_ENABLED) {
+            mergeSimilarClusters(events, stats);
+        }
 
         List<EventView> views = new ArrayList<>();
         for (EventCluster event : events) {
@@ -77,19 +70,19 @@ public class HotSimilarityService {
 
             List<PlatformHotItemDTO> items = bestPerPlatform.values().stream()
                     .sorted(Comparator
-                            .comparingInt((CandidateScore x) -> safeRank(x.candidate.item))
+                            .comparingInt((CandidateScore x) -> HotTextUtil.safeRank(x.candidate.item))
                             .thenComparingDouble((CandidateScore x) -> x.score).reversed())
                     .limit(3)
                     .map(x -> PlatformHotItemDTO.builder()
                             .platform(x.candidate.platform)
                             .hotItem(x.candidate.item)
-                            .similarityScore(round(x.score))
+                            .similarityScore(HotTextUtil.round(x.score))
                             .build())
                     .collect(Collectors.toList());
 
             double rankConsensus = items.stream()
                     .map(PlatformHotItemDTO::getHotItem)
-                    .mapToDouble(item -> rankWeight(safeRank(item)))
+                    .mapToDouble(item -> HotTextUtil.rankWeight(HotTextUtil.safeRank(item)))
                     .sum();
 
             views.add(new EventView(
@@ -117,25 +110,12 @@ public class HotSimilarityService {
             if (items == null) return;
             for (HotItemDTO item : items) {
                 if (item == null || item.getTitle() == null || item.getTitle().trim().isEmpty()) continue;
-                String normalized = normalize(item.getTitle());
-                List<String> tokens = tokenize(normalized);
+                String normalized = HotTextUtil.normalize(item.getTitle());
+                List<String> tokens = HotTextUtil.segment(normalized);
                 if (tokens.isEmpty()) continue;
                 result.add(new Candidate(platform, item, normalized, tokens));
             }
         });
-        return result;
-    }
-
-    private List<String> tokenize(String text) {
-        List<String> raw = segmenter.sentenceProcess(text);
-        List<String> result = new ArrayList<>();
-        for (String token : raw) {
-            if (token == null) continue;
-            String t = token.trim().toLowerCase(Locale.ROOT);
-            if (t.isEmpty() || STOP_WORDS.contains(t) || PURE_NUMBER.matcher(t).matches()) continue;
-            if (t.length() == 1 && containsHan(t)) continue;
-            result.add(t);
-        }
         return result;
     }
 
@@ -148,7 +128,8 @@ public class HotSimilarityService {
         for (EventCluster cluster : clusters) {
             double pair = maxPairSimilarity(candidate, cluster, stats);
             double center = centerSimilarity(candidate, cluster, stats);
-            double score = 0.55D * center + 0.45D * pair;
+            double score = HotClusterConstants.CENTER_WEIGHT * center
+                    + HotClusterConstants.PAIR_WEIGHT * pair;
 
             if (score > bestScore) {
                 bestScore = score;
@@ -161,13 +142,13 @@ public class HotSimilarityService {
         if (bestCluster == null) return null;
 
         double threshold = bestCluster.members.size() == 1
-                ? NEW_CLUSTER_MATCH_THRESHOLD
-                : EXISTING_CLUSTER_MATCH_THRESHOLD;
+                ? HotClusterConstants.NEW_CLUSTER_MATCH_THRESHOLD
+                : HotClusterConstants.EXISTING_CLUSTER_MATCH_THRESHOLD;
 
         boolean hasCoreOverlap = hasUsefulCoreOverlap(candidate, bestCluster, stats);
         boolean accepted = (bestScore >= threshold && hasCoreOverlap)
-                || bestCenter >= 0.62D
-                || bestPair >= 0.72D;
+                || bestCenter >= HotClusterConstants.CENTER_ACCEPT_THRESHOLD
+                || bestPair >= HotClusterConstants.PAIR_ACCEPT_THRESHOLD;
 
         return new Match(bestCluster, bestScore, accepted);
     }
@@ -192,14 +173,15 @@ public class HotSimilarityService {
                 double pair = maxPairSimilarity(candidate, target, stats);
                 double center = centerSimilarity(candidate, target, stats);
                 double rareBridge = rareSharedTokenBridge(candidate, target, stats);
-                double score = Math.max(0.55D * center + 0.45D * pair, rareBridge);
+                double score = Math.max(HotClusterConstants.CENTER_WEIGHT * center
+                        + HotClusterConstants.PAIR_WEIGHT * pair, rareBridge);
                 if (score > bestScore) {
                     bestScore = score;
                     best = target;
                 }
             }
 
-            if (best != null && bestScore >= WEAK_ATTACH_THRESHOLD) {
+            if (best != null && bestScore >= HotClusterConstants.WEAK_ATTACH_THRESHOLD) {
                 best.add(candidate);
                 remove.add(singleton);
             }
@@ -208,7 +190,7 @@ public class HotSimilarityService {
     }
 
     /**
-     * 稀有词桥接：共享词越少见越像事件实体；像“中国”“发布”这类全榜高频词 IDF 较低，不会轻易桥接。
+     * 稀有词桥接：共享词越少见越像事件实体；像"中国""发布"这类全榜高频词 IDF 较低，不会轻易桥接。
      */
     private double rareSharedTokenBridge(Candidate candidate, EventCluster cluster, CorpusStats stats) {
         Set<String> clusterTokens = cluster.allTokens();
@@ -216,8 +198,11 @@ public class HotSimilarityService {
         for (String token : candidate.tokenSet) {
             if (!clusterTokens.contains(token)) continue;
             double idf = stats.idf(token);
-            if (idf < 2.0D) continue;
-            double score = Math.min(0.46D, 0.22D + 0.07D * idf + Math.min(token.length(), 4) * 0.015D);
+            if (idf < HotClusterConstants.RARE_BRIDGE_MIN_IDF) continue;
+            double score = Math.min(HotClusterConstants.RARE_BRIDGE_CAP,
+                    HotClusterConstants.RARE_BRIDGE_BASE
+                            + HotClusterConstants.RARE_BRIDGE_IDF_FACTOR * idf
+                            + Math.min(token.length(), 4) * HotClusterConstants.RARE_BRIDGE_LEN_FACTOR);
             best = Math.max(best, score);
         }
         return best;
@@ -226,7 +211,7 @@ public class HotSimilarityService {
     private boolean hasUsefulCoreOverlap(Candidate candidate, EventCluster cluster, CorpusStats stats) {
         Set<String> center = cluster.centerTokens();
         for (String token : candidate.tokenSet) {
-            if (center.contains(token) && stats.idf(token) >= 1.35D) return true;
+            if (center.contains(token) && stats.idf(token) >= HotClusterConstants.CORE_OVERLAP_MIN_IDF) return true;
         }
         return false;
     }
@@ -261,7 +246,8 @@ public class HotSimilarityService {
         double weightedJaccard = unionWeight == 0D ? 0D : intersectionWeight / unionWeight;
         double containment = Math.min(aWeight, bWeight) == 0D ? 0D : intersectionWeight / Math.min(aWeight, bWeight);
 
-        return 0.68D * weightedJaccard + 0.32D * containment;
+        return HotClusterConstants.TOKEN_WEIGHTED_JACCARD_WEIGHT * weightedJaccard
+                + HotClusterConstants.TOKEN_CONTAINMENT_WEIGHT * containment;
     }
 
     private Map<String, CandidateScore> chooseBestPerPlatform(EventCluster event, CorpusStats stats) {
@@ -272,7 +258,7 @@ public class HotSimilarityService {
             if (old == null
                     || score > old.score
                     || (Math.abs(score - old.score) < 0.0001D
-                    && safeRank(candidate.item) < safeRank(old.candidate.item))) {
+                    && HotTextUtil.safeRank(candidate.item) < HotTextUtil.safeRank(old.candidate.item))) {
                 result.put(candidate.platform, new CandidateScore(candidate, score));
             }
         }
@@ -280,7 +266,7 @@ public class HotSimilarityService {
     }
 
     /**
-     * 共同热点标题只由完整 token 组成；优先选择“多标题、多平台都支持 + IDF 较高”的词。
+     * 共同热点标题只由完整 token 组成；优先选择"多标题、多平台都支持 + IDF 较高"的词。
      */
     private String buildClusterTitle(EventCluster event, CorpusStats stats) {
         Map<String, Integer> docSupport = new HashMap<>();
@@ -295,12 +281,14 @@ public class HotSimilarityService {
 
         List<TokenScore> scored = docSupport.entrySet().stream()
                 .filter(e -> e.getValue() >= 2)
-                .filter(e -> stats.idf(e.getKey()) >= 1.20D)
+                .filter(e -> stats.idf(e.getKey()) >= HotClusterConstants.TITLE_TOKEN_MIN_IDF)
                 .map(e -> {
                     String token = e.getKey();
                     int docs = e.getValue();
                     int platforms = platformSupport.getOrDefault(token, Set.of()).size();
-                    double score = docs * stats.idf(token) * (1D + 0.35D * platforms) * Math.min(token.length(), 4);
+                    double score = docs * stats.idf(token)
+                            * (1D + HotClusterConstants.TITLE_TOKEN_PLATFORM_FACTOR * platforms)
+                            * Math.min(token.length(), 4);
                     return new TokenScore(token, score, docs, platforms);
                 })
                 .sorted(Comparator.comparingDouble((TokenScore x) -> x.score).reversed())
@@ -308,12 +296,14 @@ public class HotSimilarityService {
 
         if (scored.isEmpty()) return chooseAnchor(event, stats).item.getTitle();
 
-        // 一个 3+ 字且得到多个标题支持的实体本身就可作为标题，如“白海豚”。
+        // 一个 3+ 字且得到多个标题支持的实体本身就可作为标题，如"白海豚"。
         TokenScore first = scored.get(0);
-        if (scored.size() == 1 && first.token.length() >= 3) return first.token;
+        if (scored.size() == 1 && first.token.length() >= HotClusterConstants.TITLE_SINGLE_WORD_MIN_LEN) {
+            return first.token;
+        }
 
         Set<String> selected = scored.stream()
-                .limit(5)
+                .limit(HotClusterConstants.TITLE_POOL_SIZE)
                 .map(x -> x.token)
                 .collect(Collectors.toCollection(LinkedHashSet::new));
 
@@ -331,13 +321,13 @@ public class HotSimilarityService {
         StringBuilder title = new StringBuilder();
         int used = 0;
         for (String token : ordered) {
-            if (used >= 4) break;
-            if (title.length() + token.length() > 12) continue;
+            if (used >= HotClusterConstants.TITLE_MAX_TOKENS) break;
+            if (title.length() + token.length() > HotClusterConstants.TITLE_MAX_CHARS) continue;
             title.append(token);
             used++;
         }
 
-        // 只有一个 2 字普通词时信息不足，宁可回退代表标题，也不生成“准中国”式残缺标题。
+        // 只有一个 2 字普通词时信息不足，宁可回退代表标题，也不生成"准中国"式残缺标题。
         if (used == 1 && title.length() <= 2) return anchor.item.getTitle();
         return title.length() == 0 ? anchor.item.getTitle() : title.toString();
     }
@@ -347,7 +337,8 @@ public class HotSimilarityService {
         double bestScore = -1D;
         for (Candidate candidate : event.members) {
             double affinity = centerSimilarity(candidate, event, stats);
-            double rankBonus = rankWeight(safeRank(candidate.item)) * 0.15D;
+            double rankBonus = HotTextUtil.rankWeight(HotTextUtil.safeRank(candidate.item))
+                    * HotClusterConstants.TITLE_ANCHOR_RANK_BONUS;
             double score = affinity + rankBonus;
             if (score > bestScore) {
                 bestScore = score;
@@ -357,38 +348,60 @@ public class HotSimilarityService {
         return best;
     }
 
-    private static String normalize(String title) {
-        String value = title.toLowerCase(Locale.ROOT)
-                .replace('＃', '#')
-                .replace("#", " ")
-                .replace("【", " ")
-                .replace("】", " ");
-        return CLEAN_TO_SPACE.matcher(value).replaceAll(" ").trim().replaceAll("\\s+", " ");
-    }
+    // ────────────── 簇间合并（V1.4） ──────────────
 
-    private static boolean containsHan(String value) {
-        for (int i = 0; i < value.length(); i++) {
-            if (Character.UnicodeScript.of(value.charAt(i)) == Character.UnicodeScript.HAN) return true;
+    /**
+     * 逐对合并相近簇，合并后重扫直到收敛（上限 CLUSTER_MERGE_MAX_ITERATIONS 轮）。
+     * 不用并查集传递闭包，避免 single-link chaining 把不相关事件连成一个大簇。
+     */
+    private void mergeSimilarClusters(List<EventCluster> events, CorpusStats stats) {
+        boolean merged = true;
+        for (int round = 0; merged && round < HotClusterConstants.CLUSTER_MERGE_MAX_ITERATIONS; round++) {
+            merged = false;
+            for (int i = 0; i < events.size(); i++) {
+                for (int j = i + 1; j < events.size(); j++) {
+                    EventCluster a = events.get(i);
+                    EventCluster b = events.get(j);
+                    double core = clusterCoreSimilarity(a, b, stats);
+                    double bridge = rareCoreBridge(a, b, stats);
+                    if (core >= HotClusterConstants.CLUSTER_MERGE_CORE_THRESHOLD
+                            || bridge >= HotClusterConstants.CLUSTER_MERGE_BRIDGE_THRESHOLD) {
+                        a.members.addAll(b.members);
+                        events.remove(j);
+                        j--;
+                        merged = true;
+                    }
+                }
+            }
         }
-        return false;
     }
 
-    private static double rankWeight(int rank) {
-        if (rank <= 0 || rank == Integer.MAX_VALUE) return 0D;
-        return 1D / (Math.log(rank + 1D) / Math.log(2D));
+    /** 两簇"核心词集合"的加权相似度（复用 tokenSimilarity） */
+    private double clusterCoreSimilarity(EventCluster a, EventCluster b, CorpusStats stats) {
+        return tokenSimilarity(a.centerTokens(), b.centerTokens(), stats);
     }
 
-    private static int safeRank(HotItemDTO item) {
-        return item.getRank() == null ? Integer.MAX_VALUE : item.getRank();
+    /**
+     * 稀有核心词桥接：两簇核心词交集里 IDF≥RARE_BRIDGE_MIN_IDF 的稀有实体词，
+     * 用稀有桥公式（与 rareSharedTokenBridge 一致）取最大分。
+     */
+    private double rareCoreBridge(EventCluster a, EventCluster b, CorpusStats stats) {
+        Set<String> intersection = new HashSet<>(a.centerTokens());
+        intersection.retainAll(b.centerTokens());
+        double best = 0D;
+        for (String token : intersection) {
+            double idf = stats.idf(token);
+            if (idf < HotClusterConstants.RARE_BRIDGE_MIN_IDF) continue;
+            double score = Math.min(HotClusterConstants.RARE_BRIDGE_CAP,
+                    HotClusterConstants.RARE_BRIDGE_BASE
+                            + HotClusterConstants.RARE_BRIDGE_IDF_FACTOR * idf
+                            + Math.min(token.length(), 4) * HotClusterConstants.RARE_BRIDGE_LEN_FACTOR);
+            best = Math.max(best, score);
+        }
+        return best;
     }
 
-    private static int safeScore(HotItemDTO item) {
-        return item.getNormalizedHotScore() == null ? 0 : item.getNormalizedHotScore();
-    }
-
-    private static double round(double value) {
-        return Math.round(value * 1000D) / 1000D;
-    }
+    // ────────────── 内部结构 ──────────────
 
     private static final class Candidate {
         final String platform;
@@ -428,7 +441,10 @@ public class HotSimilarityService {
             for (Candidate c : members) {
                 for (String token : c.tokenSet) support.merge(token, 1, Integer::sum);
             }
-            int required = members.size() <= 2 ? 1 : Math.max(2, (int) Math.ceil(members.size() * 0.40D));
+            int required = members.size() <= HotClusterConstants.CENTER_SUPPORT_SMALL_CLUSTER_MEMBERS
+                    ? HotClusterConstants.CENTER_SUPPORT_SINGLE_MEMBER
+                    : Math.max(HotClusterConstants.CENTER_SUPPORT_MULTI_MIN,
+                            (int) Math.ceil(members.size() * HotClusterConstants.CENTER_SUPPORT_RATIO));
             return support.entrySet().stream()
                     .filter(e -> e.getValue() >= required)
                     .map(Map.Entry::getKey)
@@ -449,11 +465,12 @@ public class HotSimilarityService {
 
         double idf(String token) {
             int frequency = df.getOrDefault(token, 0);
-            return Math.log((documentCount + 1D) / (frequency + 1D)) + 1D;
+            return HotTextUtil.idf(documentCount, frequency);
         }
 
         double tokenWeight(String token) {
-            return idf(token) * Math.min(Math.max(token.length(), 1), 4);
+            int frequency = df.getOrDefault(token, 0);
+            return HotTextUtil.tokenWeight(documentCount, frequency, token);
         }
     }
 

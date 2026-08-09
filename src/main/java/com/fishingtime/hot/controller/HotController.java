@@ -2,9 +2,8 @@ package com.fishingtime.hot.controller;
 
 import com.fishingtime.hot.dto.HotItemDTO;
 import com.fishingtime.hot.dto.SimilarHotClusterDTO;
-import com.fishingtime.hot.service.CommonHotRefiner;
+import com.fishingtime.hot.service.HotClusterService;
 import com.fishingtime.hot.service.HotService;
-import com.fishingtime.hot.service.HotSimilarityService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
@@ -21,8 +20,7 @@ import java.util.Map;
 public class HotController {
 
     private final HotService hotService;
-    private final HotSimilarityService hotSimilarityService;
-    private final CommonHotRefiner commonHotRefiner;
+    private final HotClusterService hotClusterService;
 
     @GetMapping("/{platform}")
     public Map<String, Object> getHot(@PathVariable String platform) {
@@ -44,16 +42,14 @@ public class HotController {
     }
 
     /**
-     * 返回全网共同热点：
+     * 返回全网共同热点（结果由 HotClusterService 缓存 10 分钟）：
      * 1. 先做事件聚类；
      * 2. 再做严格关键词过滤，至少 2 个跨平台共同关键词才展示；
      * 3. 每个计入的平台自身也必须命中至少 2 个共同关键词。
      */
     @GetMapping("/similar/clusters")
     public Map<String, Object> getSimilarClusters() {
-        Map<String, List<HotItemDTO>> snapshot = hotService.getAllHotSnapshot();
-        List<SimilarHotClusterDTO> raw = hotSimilarityService.cluster(snapshot);
-        List<SimilarHotClusterDTO> data = commonHotRefiner.refine(raw, snapshot);
+        List<SimilarHotClusterDTO> data = hotClusterService.getClusters();
 
         Map<String, Object> resp = new HashMap<>();
         resp.put("code", 200);

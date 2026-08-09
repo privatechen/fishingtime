@@ -16,7 +16,7 @@ import java.util.List;
 @AllArgsConstructor
 public class SimilarHotClusterDTO {
 
-    /** 聚合展示标题，直接选簇内热度最高的一条，避免额外生成标题。 */
+    /** 聚合展示标题：由跨平台共同关键词拼接（空格分隔），不足时回退簇内代表标题。 */
     private String title;
 
     /** 命中的不同平台数量。 */
