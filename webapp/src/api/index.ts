@@ -2,7 +2,7 @@
  * API 接口层
  */
 import { hotData } from '@/mock/hot'
-import { communityData, commonHotData } from '@/mock/community'
+import { communityData } from '@/mock/community'
 import { gameData } from '@/mock/game'
 import type { HotItem, CommunityPost, GameItem } from '@/types'
 
@@ -112,9 +112,35 @@ export async function fetchCommunityRecommend(): Promise<CommunityPost[]> {
   return communityData
 }
 
-export async function fetchCommonHot() {
-  await delay()
-  return commonHotData
+export interface CommonHotPlatformItem {
+  platform: string
+  similarityScore?: number
+  hotItem: {
+    rank?: number
+    title?: string
+    url?: string
+  }
+}
+
+export interface CommonHotCluster {
+  title: string
+  sourceCount: number
+  items: CommonHotPlatformItem[]
+}
+
+/**
+ * 全网共同热点：至少两个不同平台命中才由后端返回。
+ * 右侧模块只展示前三个热点簇；不展示综合热力值。
+ */
+export async function fetchCommonHot(): Promise<CommonHotCluster[]> {
+  const res = await fetch('/api/hot/similar/clusters', { credentials: 'same-origin' })
+  const json = await res.json()
+  if (json.code === 200 && Array.isArray(json.data)) {
+    return json.data
+      .filter((cluster: CommonHotCluster) => cluster.sourceCount >= 2 && Array.isArray(cluster.items) && cluster.items.length >= 2)
+      .slice(0, 3)
+  }
+  throw new Error(json.message || '共同热点加载失败')
 }
 
 export async function fetchGameList(): Promise<GameItem[]> {
