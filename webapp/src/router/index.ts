@@ -30,6 +30,11 @@ const router = createRouter({
       component: () => import('@/games/components/2048/Game2048.vue'),
     },
     {
+      path: '/games/collision',
+      name: 'gameCollision',
+      component: () => import('@/games/collision/components/CollisionGameView.vue'),
+    },
+    {
       path: '/profile',
       name: 'profile',
       component: () => import('@/views/ProfileView.vue'),

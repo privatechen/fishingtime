@@ -27,6 +27,14 @@ export const games: GameConfig[] = [
     path: '/games/2048',
   },
   {
+    id: 'collision',
+    title: '鱼群碰撞',
+    desc: '选对数字门，让鱼群冲到终点',
+    cover: '🐟',
+    status: 'available',
+    path: '/games/collision',
+  },
+  {
     id: 'minesweeper',
     title: '扫雷',
     desc: '经典益智扫雷游戏',
