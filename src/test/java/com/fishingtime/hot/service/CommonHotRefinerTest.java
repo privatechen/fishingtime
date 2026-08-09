@@ -80,6 +80,36 @@ class CommonHotRefinerTest {
         assertTrue(result.get(0).getItems().stream().noneMatch(x -> "hupu".equals(x.getPlatform())));
     }
 
+    @Test
+    void shouldRankHigherConsensusClusterFirstAfterStrictFiltering() {
+        SimilarHotClusterDTO lowRankConsensus = cluster(
+                entry("weibo", 30, "手机销量排行榜发布"),
+                entry("baidu", 25, "手机销量榜单公布")
+        );
+        SimilarHotClusterDTO highRankConsensus = cluster(
+                entry("weibo", 2, "台风白海豚红色预警"),
+                entry("baidu", 3, "台风白海豚登陆浙江")
+        );
+
+        Map<String, List<HotItemDTO>> corpus = Map.of(
+                "weibo", List.of(
+                        item(30, "手机销量排行榜发布"),
+                        item(2, "台风白海豚红色预警")
+                ),
+                "baidu", List.of(
+                        item(25, "手机销量榜单公布"),
+                        item(3, "台风白海豚登陆浙江")
+                )
+        );
+
+        List<SimilarHotClusterDTO> result = refiner.refine(
+                List.of(lowRankConsensus, highRankConsensus), corpus);
+
+        assertEquals(2, result.size());
+        assertTrue(result.get(0).getTitle().contains("台风"));
+        assertTrue(result.get(0).getTitle().contains("白海豚"));
+    }
+
     private static SimilarHotClusterDTO cluster(PlatformHotItemDTO... entries) {
         return SimilarHotClusterDTO.builder()
                 .title("raw")
