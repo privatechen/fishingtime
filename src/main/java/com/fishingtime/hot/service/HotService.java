@@ -8,6 +8,7 @@ import org.springframework.stereotype.Service;
 
 import javax.annotation.PostConstruct;
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -49,15 +50,21 @@ public class HotService {
         crawlers.forEach(this::refresh);
     }
 
-    /**
-     * 获取某平台的热榜数据及刷新时间
-     */
+    /** 获取某平台的热榜数据及刷新时间。 */
     public HotResult getHot(String platform) {
         return new HotResult(
                 cache.getOrDefault(platform, List.of()),
                 updateTimeMap.get(platform),
                 nextRefreshTimeMap.get(platform)
         );
+    }
+
+    /**
+     * 返回当前所有平台热榜缓存的快照，供跨平台相似热点计算使用。
+     * 返回副本，避免相似度服务修改缓存 Map 本身。
+     */
+    public Map<String, List<HotItemDTO>> getAllHotSnapshot() {
+        return new HashMap<>(cache);
     }
 
     private void refresh(HotCrawler crawler) {
@@ -78,9 +85,7 @@ public class HotService {
         }
     }
 
-    /**
-     * 热榜查询结果 — 包含数据及刷新时间
-     */
+    /** 热榜查询结果 — 包含数据及刷新时间。 */
     public static class HotResult {
         private final List<HotItemDTO> data;
         private final String updateTime;
