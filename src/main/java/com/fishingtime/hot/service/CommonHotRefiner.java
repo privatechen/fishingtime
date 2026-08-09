@@ -52,6 +52,14 @@ public class CommonHotRefiner {
             if (refined != null) result.add(refined);
         }
 
+        // 最终排序重新基于“严格过滤后”的真实平台覆盖与各平台排名共识，
+        // 不继承上游宽松聚类的排序，避免错误簇挤掉真正的共同热点。
+        result.sort((a, b) -> {
+            int bySource = Integer.compare(b.getSourceCount(), a.getSourceCount());
+            if (bySource != 0) return bySource;
+            return Double.compare(rankConsensus(b), rankConsensus(a));
+        });
+
         return result;
     }
 
@@ -87,9 +95,11 @@ public class CommonHotRefiner {
                             + Math.min(token.length(), 4) * 0.15D;
                     return new KeywordScore(token, score, platformSupport);
                 })
-                .sorted(Comparator
-                        .comparingInt((KeywordScore x) -> x.platformSupport).reversed()
-                        .thenComparingDouble((KeywordScore x) -> x.score).reversed())
+                .sorted((a, b) -> {
+                    int byPlatform = Integer.compare(b.platformSupport, a.platformSupport);
+                    if (byPlatform != 0) return byPlatform;
+                    return Double.compare(b.score, a.score);
+                })
                 .collect(Collectors.toList());
 
         if (keywords.size() < MIN_CLUSTER_KEYWORDS) return null;
@@ -172,6 +182,20 @@ public class CommonHotRefiner {
         int count = 0;
         for (String token : a) if (b.contains(token)) count++;
         return count;
+    }
+
+    private static double rankConsensus(SimilarHotClusterDTO cluster) {
+        if (cluster.getItems() == null) return 0D;
+        return cluster.getItems().stream()
+                .map(PlatformHotItemDTO::getHotItem)
+                .filter(Objects::nonNull)
+                .mapToDouble(item -> rankWeight(safeRank(item)))
+                .sum();
+    }
+
+    private static double rankWeight(int rank) {
+        if (rank <= 0 || rank == Integer.MAX_VALUE) return 0D;
+        return 1D / (Math.log(rank + 1D) / Math.log(2D));
     }
 
     private static int safeRank(HotItemDTO item) {
