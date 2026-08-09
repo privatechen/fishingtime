@@ -35,7 +35,7 @@ public class CommonHotRefiner {
             "又", "都", "就", "还", "已", "正在", "进行", "表示", "回应", "称", "发布", "最新", "目前", "今日",
             "如何", "怎么", "为什么", "什么", "哪些", "一个", "一名", "网友", "现场", "消息", "视频", "相关", "正式",
             "预计", "再次", "持续", "成为", "引发", "引热议", "来了", "去哪", "哪了", "能否", "可能", "开始", "这个",
-            "评价", "认为", "关于", "发生", "出现", "进行", "情况", "相关", "方面"
+            "评价", "认为", "关于", "发生", "出现", "情况", "方面"
     );
 
     private final JiebaSegmenter segmenter = new JiebaSegmenter();
@@ -74,7 +74,6 @@ public class CommonHotRefiner {
             }
         }
 
-        // “cluster词”必须至少由两个不同平台共同支持，而不是只在同平台重复出现。
         List<KeywordScore> keywords = tokenPlatforms.entrySet().stream()
                 .filter(e -> e.getValue().size() >= 2)
                 .filter(e -> stats.idf(e.getKey()) >= MIN_KEYWORD_IDF)
@@ -99,7 +98,6 @@ public class CommonHotRefiner {
                 .map(x -> x.token)
                 .collect(Collectors.toCollection(LinkedHashSet::new));
 
-        // 每个平台自身也必须至少命中 2 个 cluster 关键词，避免只靠“中国”或“台风”一个泛词被算进来。
         List<PlatformHotItemDTO> qualifiedItems = itemTokens.entrySet().stream()
                 .filter(e -> overlapCount(e.getValue(), clusterKeywords) >= MIN_CLUSTER_KEYWORDS)
                 .map(Map.Entry::getKey)
@@ -114,7 +112,6 @@ public class CommonHotRefiner {
                 .count();
         if (distinctPlatforms < 2) return null;
 
-        // 重新按“真正留下来的平台”计算关键词，防止被剔除的平台影响展示词。
         Set<String> survivingPlatforms = qualifiedItems.stream()
                 .map(PlatformHotItemDTO::getPlatform)
                 .collect(Collectors.toSet());
