@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.fishingtime.game.mapper.ColorFocusScoreMapper">
+
+    <resultMap id="colorFocusScoreMap" type="com.fishingtime.game.domain.ColorFocusScore">
+        <id column="id" property="id"/>
+        <result column="user_id" property="userId"/>
+        <result column="best_score" property="bestScore"/>
+        <result column="best_accuracy" property="bestAccuracy"/>
+        <result column="best_avg_reaction" property="bestAvgReaction"/>
+        <result column="max_streak" property="maxStreak"/>
+        <result column="achieved_at" property="achievedAt"/>
+        <result column="created_at" property="createdAt"/>
+        <result column="updated_at" property="updatedAt"/>
+    </resultMap>
+
+    <select id="selectByUserId" resultMap="colorFocusScoreMap">
+        SELECT * FROM color_focus_score WHERE user_id = #{userId}
+    </select>
+
+    <insert id="insert" parameterType="com.fishingtime.game.domain.ColorFocusScore"
+            useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO color_focus_score (user_id, best_score, best_accuracy, best_avg_reaction, max_streak, achieved_at)
+        VALUES (#{userId}, #{bestScore}, #{bestAccuracy}, #{bestAvgReaction}, #{maxStreak}, NOW())
+    </insert>
+
+    <!-- 各字段取更优值：best_score 只增不减；正确率更大、均时更小、连对更大 -->
+    <update id="updateBest">
+        UPDATE color_focus_score
+        SET best_score = GREATEST(best_score, #{dto.bestScore}),
+            best_accuracy = CASE
+                WHEN #{dto.bestAccuracy} IS NOT NULL
+                     AND (best_accuracy IS NULL OR #{dto.bestAccuracy} > best_accuracy)
+                THEN #{dto.bestAccuracy} ELSE best_accuracy END,
+            best_avg_reaction = CASE
+                WHEN #{dto.bestAvgReaction} IS NOT NULL
+                     AND (best_avg_reaction IS NULL OR #{dto.bestAvgReaction} &lt; best_avg_reaction)
+                THEN #{dto.bestAvgReaction} ELSE best_avg_reaction END,
+            max_streak = GREATEST(COALESCE(max_streak, 0), COALESCE(#{dto.maxStreak}, 0)),
+            achieved_at = NOW()
+        WHERE user_id = #{userId}
+    </update>
+
+    <!-- 排行榜：JOIN user 表反查昵称 -->
+    <select id="selectRank" resultType="java.util.HashMap">
+        SELECT
+            s.best_score AS bestScore,
+            u.nickname AS nickname
+        FROM color_focus_score s
+        LEFT JOIN user u ON u.id = s.user_id
+        ORDER BY s.best_score DESC, s.achieved_at ASC
+        LIMIT #{limit}
+    </select>
+</mapper>

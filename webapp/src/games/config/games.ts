@@ -35,6 +35,14 @@ export const games: GameConfig[] = [
     path: '/games/collision',
   },
   {
+    id: 'color-focus',
+    title: '选颜色',
+    desc: '40 秒专注力挑战',
+    cover: '🎨',
+    status: 'available',
+    path: '/games/color-focus',
+  },
+  {
     id: 'minesweeper',
     title: '扫雷',
     desc: '经典益智扫雷游戏',

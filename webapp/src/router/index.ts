@@ -35,6 +35,11 @@ const router = createRouter({
       component: () => import('@/games/collision/components/CollisionGameView.vue'),
     },
     {
+      path: '/games/color-focus',
+      name: 'gameColorFocus',
+      component: () => import('@/games/color-focus/components/ColorFocusGameView.vue'),
+    },
+    {
       path: '/profile',
       name: 'profile',
       component: () => import('@/views/ProfileView.vue'),

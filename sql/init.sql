@@ -23,3 +23,21 @@ CREATE TABLE IF NOT EXISTS `user` (
     UNIQUE KEY `uk_username` (`username`),
     KEY `idx_created_at` (`created_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户表';
+
+-- ---------------------------------------------------------
+-- 选颜色最高分表（每用户一行，仿 game_2048_score）
+-- ---------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `color_focus_score` (
+    `id`                BIGINT          PRIMARY KEY AUTO_INCREMENT,
+    `user_id`           BIGINT          NOT NULL                COMMENT '关联 user.id，一人一行',
+    `best_score`        INT             NOT NULL DEFAULT 0      COMMENT '最高综合得分（排行榜依据，只增不减）',
+    `best_accuracy`     DECIMAL(4,2)    DEFAULT NULL            COMMENT '最佳正确率 0.00~1.00（≥10题才更新）',
+    `best_avg_reaction` DECIMAL(5,2)    DEFAULT NULL            COMMENT '最佳平均反应时间（秒，≥10题才更新）',
+    `max_streak`        INT             DEFAULT NULL            COMMENT '最高连对',
+    `achieved_at`       DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '最近刷分时间',
+    `created_at`        DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `updated_at`        DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+    UNIQUE KEY `uk_user_id` (`user_id`),
+    KEY `idx_best_score` (`best_score`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='选颜色最高分表';

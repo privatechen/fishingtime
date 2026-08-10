@@ -27,6 +27,15 @@ async function loadBestScores() {
   } catch {
     // 加载失败不展示
   }
+  try {
+    const res = await fetch('/api/games/color-focus/my-best', { credentials: 'same-origin' })
+    const json = await res.json()
+    if (json.code === 200 && json.data) {
+      bestMap.value['color-focus'] = json.data.bestScore ?? 0
+    }
+  } catch {
+    // 加载失败不展示
+  }
 }
 
 /** 每个游戏的个人最佳（游客不显示） */
