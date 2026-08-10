@@ -36,6 +36,25 @@ async function loadBestScores() {
   } catch {
     // 加载失败不展示
   }
+  try {
+    const res = await fetch('/api/games/direction-trap/my-best', { credentials: 'same-origin' })
+    const json = await res.json()
+    if (json.code === 200 && json.data) {
+      bestMap.value['direction-trap'] = json.data.bestScore ?? 0
+    }
+  } catch {
+    // 加载失败不展示
+  }
+  try {
+    // 颜色猎手为时间制：best_final_time 毫秒 → 大厅显示秒（1 位小数）
+    const res = await fetch('/api/games/color-hunter/my-best', { credentials: 'same-origin' })
+    const json = await res.json()
+    if (json.code === 200 && json.data) {
+      bestMap.value['color-hunter'] = Math.round((json.data.bestFinalTime ?? 0) / 100) / 10
+    }
+  } catch {
+    // 加载失败不展示
+  }
 }
 
 /** 每个游戏的个人最佳（游客不显示） */

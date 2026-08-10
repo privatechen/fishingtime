@@ -40,6 +40,16 @@ const router = createRouter({
       component: () => import('@/games/color-focus/components/ColorFocusGameView.vue'),
     },
     {
+      path: '/games/direction-trap',
+      name: 'gameDirectionTrap',
+      component: () => import('@/games/direction-trap/components/DirectionTrapGameView.vue'),
+    },
+    {
+      path: '/games/color-hunter',
+      name: 'gameColorHunter',
+      component: () => import('@/games/color-hunter/components/ColorHunterGameView.vue'),
+    },
+    {
       path: '/profile',
       name: 'profile',
       component: () => import('@/views/ProfileView.vue'),

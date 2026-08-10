@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.fishingtime.game.mapper.ColorHunterScoreMapper">
+
+    <resultMap id="colorHunterScoreMap" type="com.fishingtime.game.domain.ColorHunterScore">
+        <id column="id" property="id"/>
+        <result column="user_id" property="userId"/>
+        <result column="best_final_time" property="bestFinalTime"/>
+        <result column="best_actual_time" property="bestActualTime"/>
+        <result column="lowest_error_count" property="lowestErrorCount"/>
+        <result column="fastest_round" property="fastestRound"/>
+        <result column="achieved_at" property="achievedAt"/>
+        <result column="created_at" property="createdAt"/>
+        <result column="updated_at" property="updatedAt"/>
+    </resultMap>
+
+    <select id="selectByUserId" resultMap="colorHunterScoreMap">
+        SELECT * FROM color_hunter_score WHERE user_id = #{userId}
+    </select>
+
+    <insert id="insert" parameterType="com.fishingtime.game.domain.ColorHunterScore"
+            useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO color_hunter_score (user_id, best_final_time, best_actual_time, lowest_error_count, fastest_round, achieved_at)
+        VALUES (#{userId}, #{bestFinalTime}, #{bestActualTime}, #{lowestErrorCount}, #{fastestRound}, NOW())
+    </insert>
+
+    <!-- 各字段取更小值：时间/错误越小越好 -->
+    <update id="updateBest">
+        UPDATE color_hunter_score
+        SET best_final_time = LEAST(best_final_time, #{dto.bestFinalTime}),
+            best_actual_time = CASE
+                WHEN #{dto.bestActualTime} IS NOT NULL
+                     AND (best_actual_time IS NULL OR #{dto.bestActualTime} &lt; best_actual_time)
+                THEN #{dto.bestActualTime} ELSE best_actual_time END,
+            lowest_error_count = CASE
+                WHEN #{dto.lowestErrorCount} IS NOT NULL
+                     AND (lowest_error_count IS NULL OR #{dto.lowestErrorCount} &lt; lowest_error_count)
+                THEN #{dto.lowestErrorCount} ELSE lowest_error_count END,
+            fastest_round = CASE
+                WHEN #{dto.fastestRound} IS NOT NULL
+                     AND (fastest_round IS NULL OR #{dto.fastestRound} &lt; fastest_round)
+                THEN #{dto.fastestRound} ELSE fastest_round END,
+            achieved_at = NOW()
+        WHERE user_id = #{userId}
+    </update>
+
+    <!-- 排行榜：按 best_final_time 升序（越小越靠前），JOIN user 反查昵称 -->
+    <select id="selectRank" resultType="java.util.HashMap">
+        SELECT
+            s.best_final_time AS bestFinalTime,
+            u.nickname AS nickname
+        FROM color_hunter_score s
+        LEFT JOIN user u ON u.id = s.user_id
+        ORDER BY s.best_final_time ASC, s.achieved_at ASC
+        LIMIT #{limit}
+    </select>
+</mapper>

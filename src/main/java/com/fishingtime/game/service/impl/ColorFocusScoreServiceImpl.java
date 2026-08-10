@@ -60,6 +60,7 @@ public class ColorFocusScoreServiceImpl implements ColorFocusScoreService {
             score.setBestScore(dto.getBestScore());
             score.setBestAccuracy(dto.getBestAccuracy());
             score.setBestAvgReaction(dto.getBestAvgReaction());
+            score.setBestSwitchAccuracy(dto.getBestSwitchAccuracy());
             score.setMaxStreak(dto.getMaxStreak());
             scoreMapper.insert(score);
             log.info("[选颜色] 用户 {} 首次提交分数 {}", userId, dto.getBestScore());

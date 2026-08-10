@@ -19,6 +19,8 @@ public class ColorFocusScore {
     private BigDecimal bestAccuracy;
     /** 最佳平均反应时间（秒） */
     private BigDecimal bestAvgReaction;
+    /** 最佳规则切换正确率 0.00~1.00 */
+    private BigDecimal bestSwitchAccuracy;
     /** 最高连对 */
     private Integer maxStreak;
     private LocalDateTime achievedAt;

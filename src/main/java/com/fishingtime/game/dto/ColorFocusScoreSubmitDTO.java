@@ -19,6 +19,9 @@ public class ColorFocusScoreSubmitDTO {
     /** 本局平均反应时间（秒，可空） */
     private BigDecimal bestAvgReaction;
 
+    /** 本局规则切换正确率 0.00~1.00（可空） */
+    private BigDecimal bestSwitchAccuracy;
+
     /** 本局最高连对（可空） */
     private Integer maxStreak;
 }

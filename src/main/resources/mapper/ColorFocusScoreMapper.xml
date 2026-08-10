@@ -9,6 +9,7 @@
         <result column="best_score" property="bestScore"/>
         <result column="best_accuracy" property="bestAccuracy"/>
         <result column="best_avg_reaction" property="bestAvgReaction"/>
+        <result column="best_switch_accuracy" property="bestSwitchAccuracy"/>
         <result column="max_streak" property="maxStreak"/>
         <result column="achieved_at" property="achievedAt"/>
         <result column="created_at" property="createdAt"/>
@@ -21,8 +22,8 @@
 
     <insert id="insert" parameterType="com.fishingtime.game.domain.ColorFocusScore"
             useGeneratedKeys="true" keyProperty="id">
-        INSERT INTO color_focus_score (user_id, best_score, best_accuracy, best_avg_reaction, max_streak, achieved_at)
-        VALUES (#{userId}, #{bestScore}, #{bestAccuracy}, #{bestAvgReaction}, #{maxStreak}, NOW())
+        INSERT INTO color_focus_score (user_id, best_score, best_accuracy, best_avg_reaction, best_switch_accuracy, max_streak, achieved_at)
+        VALUES (#{userId}, #{bestScore}, #{bestAccuracy}, #{bestAvgReaction}, #{bestSwitchAccuracy}, #{maxStreak}, NOW())
     </insert>
 
     <!-- 各字段取更优值：best_score 只增不减；正确率更大、均时更小、连对更大 -->
@@ -37,6 +38,10 @@
                 WHEN #{dto.bestAvgReaction} IS NOT NULL
                      AND (best_avg_reaction IS NULL OR #{dto.bestAvgReaction} &lt; best_avg_reaction)
                 THEN #{dto.bestAvgReaction} ELSE best_avg_reaction END,
+            best_switch_accuracy = CASE
+                WHEN #{dto.bestSwitchAccuracy} IS NOT NULL
+                     AND (best_switch_accuracy IS NULL OR #{dto.bestSwitchAccuracy} > best_switch_accuracy)
+                THEN #{dto.bestSwitchAccuracy} ELSE best_switch_accuracy END,
             max_streak = GREATEST(COALESCE(max_streak, 0), COALESCE(#{dto.maxStreak}, 0)),
             achieved_at = NOW()
         WHERE user_id = #{userId}

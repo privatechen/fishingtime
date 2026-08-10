@@ -32,7 +32,8 @@ CREATE TABLE IF NOT EXISTS `color_focus_score` (
     `user_id`           BIGINT          NOT NULL                COMMENT '关联 user.id，一人一行',
     `best_score`        INT             NOT NULL DEFAULT 0      COMMENT '最高综合得分（排行榜依据，只增不减）',
     `best_accuracy`     DECIMAL(4,2)    DEFAULT NULL            COMMENT '最佳正确率 0.00~1.00（≥10题才更新）',
-    `best_avg_reaction` DECIMAL(5,2)    DEFAULT NULL            COMMENT '最佳平均反应时间（秒，≥10题才更新）',
+    `best_avg_reaction`    DECIMAL(5,2)    DEFAULT NULL            COMMENT '最佳平均反应时间（秒，≥10题才更新）',
+    `best_switch_accuracy` DECIMAL(4,2)    DEFAULT NULL            COMMENT '最佳规则切换正确率 0.00~1.00（≥10题才更新）',
     `max_streak`        INT             DEFAULT NULL            COMMENT '最高连对',
     `achieved_at`       DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '最近刷分时间',
     `created_at`        DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -41,3 +42,40 @@ CREATE TABLE IF NOT EXISTS `color_focus_score` (
     UNIQUE KEY `uk_user_id` (`user_id`),
     KEY `idx_best_score` (`best_score`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='选颜色最高分表';
+
+-- ---------------------------------------------------------
+-- 方向陷阱最高分表（每用户一行，字段比选颜色多"规则切换正确率"）
+-- ---------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `direction_trap_score` (
+    `id`                   BIGINT          PRIMARY KEY AUTO_INCREMENT,
+    `user_id`              BIGINT          NOT NULL                COMMENT '关联 user.id，一人一行',
+    `best_score`           INT             NOT NULL DEFAULT 0      COMMENT '最高综合得分（排行榜依据，只增不减）',
+    `best_accuracy`        DECIMAL(4,2)    DEFAULT NULL            COMMENT '最佳正确率 0.00~1.00（≥10题才更新）',
+    `best_avg_reaction`    DECIMAL(5,2)    DEFAULT NULL            COMMENT '最佳平均反应时间（秒，≥10题才更新）',
+    `best_switch_accuracy` DECIMAL(4,2)    DEFAULT NULL            COMMENT '最佳规则切换正确率 0.00~1.00（≥10题才更新）',
+    `max_streak`           INT             DEFAULT NULL            COMMENT '最高连对',
+    `achieved_at`          DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '最近刷分时间',
+    `created_at`           DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `updated_at`           DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+    UNIQUE KEY `uk_user_id` (`user_id`),
+    KEY `idx_best_score` (`best_score`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='方向陷阱最高分表';
+
+-- ---------------------------------------------------------
+-- 颜色猎手最佳成绩表（每用户一行，时间制：越小越好）
+-- ---------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `color_hunter_score` (
+    `id`                 BIGINT       PRIMARY KEY AUTO_INCREMENT,
+    `user_id`            BIGINT       NOT NULL               COMMENT '关联 user.id，一人一行',
+    `best_final_time`    INT          NOT NULL DEFAULT 0     COMMENT '最佳最终成绩（毫秒，越小越好，排行榜依据）',
+    `best_actual_time`   INT          DEFAULT NULL           COMMENT '最佳实际用时（毫秒）',
+    `lowest_error_count` INT          DEFAULT NULL           COMMENT '最少错误次数',
+    `fastest_round`      INT          DEFAULT NULL           COMMENT '最快一轮用时（毫秒）',
+    `achieved_at`        DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '最近刷分时间',
+    `created_at`         DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `updated_at`         DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+    UNIQUE KEY `uk_user_id` (`user_id`),
+    KEY `idx_best_final_time` (`best_final_time`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='颜色猎手最佳成绩表';

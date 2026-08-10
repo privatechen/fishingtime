@@ -4,6 +4,11 @@
  * 未来新增游戏：在此数组增加一项 + 新增对应分包组件/引擎
  * 大厅组件零改动，自动渲染新卡片
  */
+import colorFocusCover from '@/assets/png/games/颜色陷阱.png'
+import directionTrapCover from '@/assets/png/games/方向陷阱.png'
+import colorHunterCover from '@/assets/png/games/颜色捕手.png'
+import cover2048 from '@/assets/png/games/2048.png'
+
 export interface GameConfig {
   /** 游戏唯一标识，同时是路由路径 */
   id: string
@@ -22,7 +27,7 @@ export const games: GameConfig[] = [
     id: '2048',
     title: '摸鱼2048',
     desc: '合并相同数字，挑战 2048',
-    cover: '🎯',
+    cover: cover2048,
     status: 'available',
     path: '/games/2048',
   },
@@ -38,9 +43,25 @@ export const games: GameConfig[] = [
     id: 'color-focus',
     title: '选颜色',
     desc: '40 秒专注力挑战',
-    cover: '🎨',
+    cover: colorFocusCover,
     status: 'available',
     path: '/games/color-focus',
+  },
+  {
+    id: 'direction-trap',
+    title: '方向陷阱',
+    desc: '40 秒反应挑战',
+    cover: directionTrapCover,
+    status: 'available',
+    path: '/games/direction-trap',
+  },
+  {
+    id: 'color-hunter',
+    title: '颜色猎手',
+    desc: '找出所有目标颜色',
+    cover: colorHunterCover,
+    status: 'available',
+    path: '/games/color-hunter',
   },
   {
     id: 'minesweeper',

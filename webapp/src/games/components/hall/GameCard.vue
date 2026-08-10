@@ -11,6 +11,11 @@ const props = defineProps<{
 const router = useRouter()
 const emit = defineEmits<{ (e: 'toast', msg: string): void }>()
 
+/** 封面是图片路径（import 后的 URL 以 / 开头）还是 emoji 文本 */
+function isImageCover(cover: string): boolean {
+  return cover.startsWith('/') || cover.startsWith('data:') || cover.startsWith('http')
+}
+
 function handleClick() {
   if (props.game.status === 'available' && props.game.path) {
     router.push(props.game.path)
@@ -22,7 +27,10 @@ function handleClick() {
 
 <template>
   <div class="game-card" @click="handleClick">
-    <div class="game-card-cover">{{ game.cover }}</div>
+    <div class="game-card-cover">
+      <img v-if="isImageCover(game.cover)" :src="game.cover" alt="" />
+      <span v-else>{{ game.cover }}</span>
+    </div>
     <div class="game-card-info">
       <h3 class="game-card-title">{{ game.title }}</h3>
       <p class="game-card-desc">{{ game.desc }}</p>
@@ -61,6 +69,11 @@ function handleClick() {
 .game-card-cover {
   font-size: 56px;
   line-height: 1;
+}
+.game-card-cover img {
+  width: 64px;
+  height: 64px;
+  object-fit: contain;
 }
 
 .game-card-info {
