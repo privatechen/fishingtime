@@ -3,6 +3,7 @@ package com.fishingtime.web;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fishingtime.auth.CurrentUserInfo;
 import com.fishingtime.auth.LoginInterceptor;
+import com.fishingtime.auth.TokenService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -21,10 +22,12 @@ class LoginInterceptorTest {
     private LoginInterceptor interceptor;
     private MockHttpServletRequest request;
     private MockHttpServletResponse response;
+    private TokenService tokenService;
 
     @BeforeEach
     void setUp() {
-        interceptor = new LoginInterceptor(new ObjectMapper());
+        tokenService = new TokenService();
+        interceptor = new LoginInterceptor(new ObjectMapper(), tokenService);
         request = new MockHttpServletRequest();
         response = new MockHttpServletResponse();
     }
@@ -77,5 +80,29 @@ class LoginInterceptorTest {
 
         // 无 session → 拦截
         assertFalse(result);
+    }
+
+    @Test
+    @DisplayName("携带有效 token 放行")
+    void withValidToken() throws Exception {
+        request.setRequestURI("/api/games/my-records");
+        String token = tokenService.createToken(new CurrentUserInfo(1L, "test", "Test"));
+        request.addHeader("Authorization", "Bearer " + token);
+
+        boolean result = interceptor.preHandle(request, response, new Object());
+
+        assertTrue(result);
+    }
+
+    @Test
+    @DisplayName("携带无效 token 被拦截")
+    void withInvalidToken() throws Exception {
+        request.setRequestURI("/api/games/my-records");
+        request.addHeader("Authorization", "Bearer invalid-token");
+
+        boolean result = interceptor.preHandle(request, response, new Object());
+
+        assertFalse(result);
+        assertEquals(401, response.getStatus());
     }
 }

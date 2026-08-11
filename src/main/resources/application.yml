@@ -33,3 +33,8 @@ amap:
 weather:
   default-adcode: 110000
   timeout-ms: 2000
+
+# 微信小程序配置（secret 用环境变量注入，不写死在版本库）
+wechat:
+  appid: wxc9a602fd789e0d49
+  secret: ${WX_SECRET:}

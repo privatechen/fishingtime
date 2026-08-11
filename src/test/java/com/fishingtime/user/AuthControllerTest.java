@@ -59,6 +59,9 @@ class AuthControllerTest {
     @MockBean
     private com.fishingtime.game.mapper.ColorHunterScoreMapper colorHunterScoreMapper;
 
+    @MockBean
+    private com.fishingtime.feedback.mapper.FeedbackMapper feedbackMapper;
+
     /**
      * Mock UserMapper 以通过 MyBatis 加载
      * 注：application-test.yml 已排除 DataSource/MyBatis 自动配置，

@@ -20,16 +20,21 @@ import java.util.List;
 public class WebMvcConfig implements WebMvcConfigurer {
 
     private final LoginInterceptor loginInterceptor;
+    private final CurrentUserArgumentResolver currentUserArgumentResolver;
+    private final ApiLogInterceptor apiLogInterceptor;
 
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
+        // 入参日志优先打印（在认证拦截之前）
+        registry.addInterceptor(apiLogInterceptor)
+                .addPathPatterns("/api/**");
         registry.addInterceptor(loginInterceptor)
                 .addPathPatterns("/api/**")
-                .excludePathPatterns("/api/auth/register", "/api/auth/login", "/api/users/**", "/api/hot/**", "/api/region/**", "/api/weather/**", "/api/health/**", "/api/daily-sentence/**", "/api/games/2048/rank", "/api/games/color-focus/rank", "/api/games/direction-trap/rank", "/api/games/color-hunter/rank");
+                .excludePathPatterns("/api/auth/register", "/api/auth/login", "/api/auth/wx-login", "/api/auth/wx-register", "/api/users/**", "/api/hot/**", "/api/region/**", "/api/weather/**", "/api/health/**", "/api/daily-sentence/**", "/api/feedback", "/api/games/2048/rank", "/api/games/color-focus/rank", "/api/games/direction-trap/rank", "/api/games/color-hunter/rank");
     }
 
     @Override
     public void addArgumentResolvers(List<HandlerMethodArgumentResolver> resolvers) {
-        resolvers.add(new CurrentUserArgumentResolver());
+        resolvers.add(currentUserArgumentResolver);
     }
 }

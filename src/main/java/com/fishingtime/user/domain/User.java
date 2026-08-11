@@ -15,6 +15,8 @@ public class User {
     private String password;
     private String nickname;
     private String email;
+    /** 微信小程序 OpenID（唯一） */
+    private String openid;
     private String avatarUrl;
     private Integer status;
     private LocalDateTime createdAt;

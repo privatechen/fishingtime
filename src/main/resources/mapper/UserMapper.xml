@@ -9,6 +9,7 @@
         <result column="password" property="password"/>
         <result column="nickname" property="nickname"/>
         <result column="email" property="email"/>
+        <result column="openid" property="openid"/>
         <result column="avatar_url" property="avatarUrl"/>
         <result column="status" property="status"/>
         <result column="created_at" property="createdAt"/>
@@ -16,18 +17,24 @@
     </resultMap>
 
     <sql id="baseColumns">
-        id, username, nickname, email, avatar_url, status, created_at, updated_at
+        id, username, nickname, email, openid, avatar_url, status, created_at, updated_at
     </sql>
 
     <insert id="insertUser" parameterType="User" useGeneratedKeys="true" keyProperty="id">
-        INSERT INTO user (username, password, nickname, email, avatar_url, status)
-        VALUES (#{username}, #{password}, #{nickname}, #{email}, #{avatarUrl}, #{status})
+        INSERT INTO user (username, password, nickname, email, openid, avatar_url, status)
+        VALUES (#{username}, #{password}, #{nickname}, #{email}, #{openid}, #{avatarUrl}, #{status})
     </insert>
 
     <select id="selectByUsername" resultMap="userResultMap">
-        SELECT id, username, password, nickname, email, avatar_url, status, created_at, updated_at
+        SELECT id, username, password, nickname, email, openid, avatar_url, status, created_at, updated_at
         FROM user
         WHERE username = #{username}
+    </select>
+
+    <select id="selectByOpenid" resultMap="userResultMap">
+        SELECT <include refid="baseColumns"/>
+        FROM user
+        WHERE openid = #{openid}
     </select>
 
     <select id="selectById" resultMap="userResultMap">

@@ -53,6 +53,9 @@ class UserControllerTest {
     @org.springframework.boot.test.mock.mockito.MockBean
     private com.fishingtime.game.mapper.ColorHunterScoreMapper colorHunterScoreMapper;
 
+    @org.springframework.boot.test.mock.mockito.MockBean
+    private com.fishingtime.feedback.mapper.FeedbackMapper feedbackMapper;
+
     @Test
     @DisplayName("获取用户信息 — 成功")
     void getUserSuccess() throws Exception {

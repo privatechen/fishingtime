@@ -15,12 +15,14 @@ CREATE TABLE IF NOT EXISTS `user` (
     `password`    VARCHAR(255)    NOT NULL                COMMENT 'BCrypt 哈希',
     `nickname`    VARCHAR(64)     NOT NULL                COMMENT '昵称',
     `email`       VARCHAR(128)    DEFAULT NULL            COMMENT '邮箱',
+    `openid`      VARCHAR(64)     DEFAULT NULL            COMMENT '微信小程序 OpenID',
     `avatar_url`  VARCHAR(512)    DEFAULT NULL            COMMENT '头像地址',
     `status`      TINYINT         NOT NULL DEFAULT 1      COMMENT '1=正常 0=禁用',
     `created_at`  DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
     `updated_at`  DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 
     UNIQUE KEY `uk_username` (`username`),
+    UNIQUE KEY `uk_openid` (`openid`),
     KEY `idx_created_at` (`created_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户表';
 
@@ -79,3 +81,16 @@ CREATE TABLE IF NOT EXISTS `color_hunter_score` (
     UNIQUE KEY `uk_user_id` (`user_id`),
     KEY `idx_best_final_time` (`best_final_time`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='颜色猎手最佳成绩表';
+
+-- ---------------------------------------------------------
+-- 用户反馈表
+-- ---------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `feedback` (
+    `id`         BIGINT       PRIMARY KEY AUTO_INCREMENT,
+    `user_id`    BIGINT       DEFAULT NULL        COMMENT '关联 user.id（游客为 NULL）',
+    `content`    VARCHAR(500) NOT NULL            COMMENT '反馈内容',
+    `created_at` DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+    KEY `idx_created_at` (`created_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户反馈表';

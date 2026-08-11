@@ -13,6 +13,8 @@ public interface UserMapper {
 
     User selectByUsername(String username);
 
+    User selectByOpenid(String openid);
+
     User selectById(Long id);
 
     void updateProfile(User user);
