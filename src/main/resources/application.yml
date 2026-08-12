@@ -36,5 +36,5 @@ weather:
 
 # 微信小程序配置（secret 用环境变量注入，不写死在版本库）
 wechat:
-  appid: wxc9a602fd789e0d49
+  appid: wx13a237243a856ba4
   secret: ${WX_SECRET:}
