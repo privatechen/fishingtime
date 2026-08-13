@@ -136,16 +136,22 @@ export class ExtremeFishingEngine {
     const base = fishCount * this.cfg.scorePerFish
     const densityBonusVal = densityBonus(density, fishCount, this.cfg.densityBonusTiers)
 
-    this.state.combo++
-    if (this.state.combo > this.state.maxCombo) this.state.maxCombo = this.state.combo
-    const comboBonusVal = comboMilestoneBonus(
-      this.state.combo,
-      this.cfg.comboMilestones,
-      this.awardedCombos,
-    )
     // PERFECT：选区内格子 ≥ perfectMinCells 且鱼占比 ≥ perfectMinDensity（鱼数向上取整等效）
     const perfect =
       cellCount >= this.cfg.perfectMinCells && density >= this.cfg.perfectMinDensity
+    // Combo 只在连续 PERFECT 时累积；非 perfect 的成功撒网打断连击（清零）
+    let comboBonusVal = 0
+    if (perfect) {
+      this.state.combo++
+      if (this.state.combo > this.state.maxCombo) this.state.maxCombo = this.state.combo
+      comboBonusVal = comboMilestoneBonus(
+        this.state.combo,
+        this.cfg.comboMilestones,
+        this.awardedCombos,
+      )
+    } else {
+      this.state.combo = 0
+    }
     let gained = base + densityBonusVal + comboBonusVal
     if (perfect) gained += this.cfg.perfectBonus
 

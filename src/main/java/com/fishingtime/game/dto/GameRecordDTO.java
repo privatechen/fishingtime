@@ -45,4 +45,13 @@ public class GameRecordDTO {
 
     /** 鱼群突围：最佳记录总用时（毫秒） */
     private Integer bestDuration;
+
+    /** 极限捞鱼：最佳 PERFECT NET 次数 */
+    private Integer bestPerfectCount;
+
+    /** 极限捞鱼：最佳最高 Combo */
+    private Integer bestMaxCombo;
+
+    /** 极限捞鱼：最佳记录河豚失误数 */
+    private Integer bestPufferMistakes;
 }

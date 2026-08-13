@@ -3,12 +3,14 @@ package com.fishingtime.game.service;
 import com.fishingtime.game.domain.ColorFocusScore;
 import com.fishingtime.game.domain.ColorHunterScore;
 import com.fishingtime.game.domain.DirectionTrapScore;
+import com.fishingtime.game.domain.ExtremeFishingScore;
 import com.fishingtime.game.domain.FishBreakoutScore;
 import com.fishingtime.game.domain.Game2048Score;
 import com.fishingtime.game.dto.GameRecordDTO;
 import com.fishingtime.game.mapper.ColorFocusScoreMapper;
 import com.fishingtime.game.mapper.ColorHunterScoreMapper;
 import com.fishingtime.game.mapper.DirectionTrapScoreMapper;
+import com.fishingtime.game.mapper.ExtremeFishingScoreMapper;
 import com.fishingtime.game.mapper.FishBreakoutScoreMapper;
 import com.fishingtime.game.mapper.Game2048ScoreMapper;
 import lombok.RequiredArgsConstructor;
@@ -32,6 +34,7 @@ public class MyGameRecordService {
     private final DirectionTrapScoreMapper directionTrapScoreMapper;
     private final ColorHunterScoreMapper colorHunterScoreMapper;
     private final FishBreakoutScoreMapper fishBreakoutScoreMapper;
+    private final ExtremeFishingScoreMapper extremeFishingScoreMapper;
 
     public List<GameRecordDTO> getMyRecords(Long userId) {
         List<GameRecordDTO> list = new ArrayList<>();
@@ -40,6 +43,7 @@ public class MyGameRecordService {
         list.add(buildDirectionTrap(userId));
         list.add(buildColorHunter(userId));
         list.add(buildFishBreakout(userId));
+        list.add(buildExtremeFishing(userId));
         return list;
     }
 
@@ -98,6 +102,19 @@ public class MyGameRecordService {
             dto.setBestReleasedFish(score.getBestReleasedFish());
             dto.setBestMistakes(score.getBestMistakes());
             dto.setBestDuration(score.getBestDuration());
+        }
+        return dto;
+    }
+
+    private GameRecordDTO buildExtremeFishing(Long userId) {
+        GameRecordDTO dto = new GameRecordDTO();
+        dto.setGameType("extreme-fishing");
+        ExtremeFishingScore score = extremeFishingScoreMapper.selectByUserId(userId);
+        if (score != null) {
+            dto.setBestScore(score.getBestScore());
+            dto.setBestPerfectCount(score.getBestPerfectCount());
+            dto.setBestMaxCombo(score.getBestMaxCombo());
+            dto.setBestPufferMistakes(score.getBestPufferMistakes());
         }
         return dto;
     }
