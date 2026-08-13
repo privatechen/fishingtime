@@ -9,6 +9,7 @@ import directionTrapCover from '@/assets/png/games/small/方向陷阱.png'
 import colorHunterCover from '@/assets/png/games/small/颜色捕手.png'
 import cover2048 from '@/assets/png/games/small/2048.png'
 import fishBreakoutCover from '@/assets/png/games/small/鱼群突围.png'
+import extremeFishingCover from '@/assets/png/games/small/极限捞鱼.png'
 
 export interface GameConfig {
   /** 游戏唯一标识，同时是路由路径 */
@@ -44,7 +45,7 @@ export const games: GameConfig[] = [
     id: 'extreme-fishing',
     title: '极限捞鱼',
     desc: '拖动撒网，30 秒冲分',
-    cover: '🎣',
+    cover: extremeFishingCover,
     status: 'available',
     path: '/games/extreme-fishing',
   },
