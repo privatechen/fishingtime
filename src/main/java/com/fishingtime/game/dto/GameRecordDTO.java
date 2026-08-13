@@ -33,4 +33,16 @@ public class GameRecordDTO {
 
     /** 颜色猎手：最少错误次数 */
     private Integer lowestErrorCount;
+
+    /** 鱼群突围：最高清空池数 */
+    private Integer bestClearedPools;
+
+    /** 鱼群突围：最佳记录放生鱼数 */
+    private Integer bestReleasedFish;
+
+    /** 鱼群突围：最佳记录失误数 */
+    private Integer bestMistakes;
+
+    /** 鱼群突围：最佳记录总用时（毫秒） */
+    private Integer bestDuration;
 }

@@ -3,11 +3,13 @@ package com.fishingtime.game.service;
 import com.fishingtime.game.domain.ColorFocusScore;
 import com.fishingtime.game.domain.ColorHunterScore;
 import com.fishingtime.game.domain.DirectionTrapScore;
+import com.fishingtime.game.domain.FishBreakoutScore;
 import com.fishingtime.game.domain.Game2048Score;
 import com.fishingtime.game.dto.GameRecordDTO;
 import com.fishingtime.game.mapper.ColorFocusScoreMapper;
 import com.fishingtime.game.mapper.ColorHunterScoreMapper;
 import com.fishingtime.game.mapper.DirectionTrapScoreMapper;
+import com.fishingtime.game.mapper.FishBreakoutScoreMapper;
 import com.fishingtime.game.mapper.Game2048ScoreMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -29,6 +31,7 @@ public class MyGameRecordService {
     private final ColorFocusScoreMapper colorFocusScoreMapper;
     private final DirectionTrapScoreMapper directionTrapScoreMapper;
     private final ColorHunterScoreMapper colorHunterScoreMapper;
+    private final FishBreakoutScoreMapper fishBreakoutScoreMapper;
 
     public List<GameRecordDTO> getMyRecords(Long userId) {
         List<GameRecordDTO> list = new ArrayList<>();
@@ -36,6 +39,7 @@ public class MyGameRecordService {
         list.add(buildColorFocus(userId));
         list.add(buildDirectionTrap(userId));
         list.add(buildColorHunter(userId));
+        list.add(buildFishBreakout(userId));
         return list;
     }
 
@@ -81,6 +85,19 @@ public class MyGameRecordService {
             dto.setBestFinalTime(score.getBestFinalTime());
             dto.setBestActualTime(score.getBestActualTime());
             dto.setLowestErrorCount(score.getLowestErrorCount());
+        }
+        return dto;
+    }
+
+    private GameRecordDTO buildFishBreakout(Long userId) {
+        GameRecordDTO dto = new GameRecordDTO();
+        dto.setGameType("fish-breakout");
+        FishBreakoutScore score = fishBreakoutScoreMapper.selectByUserId(userId);
+        if (score != null) {
+            dto.setBestClearedPools(score.getBestClearedPools());
+            dto.setBestReleasedFish(score.getBestReleasedFish());
+            dto.setBestMistakes(score.getBestMistakes());
+            dto.setBestDuration(score.getBestDuration());
         }
         return dto;
     }
