@@ -40,6 +40,14 @@ export const games: GameConfig[] = [
     path: '/games/collision',
   },
   {
+    id: 'fish-breakout',
+    title: '鱼群突围',
+    desc: '30 秒连续清空鱼池',
+    cover: '🐟',
+    status: 'available',
+    path: '/games/fish-breakout',
+  },
+  {
     id: 'color-focus',
     title: '选颜色',
     desc: '40 秒专注力挑战',

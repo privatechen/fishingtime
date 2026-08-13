@@ -94,3 +94,22 @@ CREATE TABLE IF NOT EXISTS `feedback` (
 
     KEY `idx_created_at` (`created_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户反馈表';
+
+-- ---------------------------------------------------------
+-- 鱼群突围最佳成绩表（每用户一行）
+-- 排行规则：best_cleared_pools 降序 → best_released_fish 降序 → 昵称升序
+-- ---------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `fish_breakout_score` (
+    `id`                  BIGINT      PRIMARY KEY AUTO_INCREMENT,
+    `user_id`             BIGINT      NOT NULL             COMMENT '关联 user.id，一人一行',
+    `best_cleared_pools`  INT         NOT NULL DEFAULT 0   COMMENT '最高清空池数（排行第一依据）',
+    `best_released_fish`  INT         NOT NULL DEFAULT 0   COMMENT '最佳记录放生鱼总数（排行第二依据）',
+    `best_mistakes`       INT         NOT NULL DEFAULT 0   COMMENT '最佳记录失误数（展示用，不参与排行）',
+    `best_duration`       INT         DEFAULT NULL         COMMENT '最佳记录总用时（毫秒，展示用）',
+    `achieved_at`         DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '最近一次刷新最佳的时间',
+    `created_at`          DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `updated_at`          DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+    UNIQUE KEY `uk_user_id` (`user_id`),
+    KEY `idx_best_cleared_pools` (`best_cleared_pools`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='鱼群突围最佳成绩表（每用户一行）';

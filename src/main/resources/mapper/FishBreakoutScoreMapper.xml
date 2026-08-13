@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.fishingtime.game.mapper.FishBreakoutScoreMapper">
+
+    <resultMap id="fishBreakoutScoreMap" type="com.fishingtime.game.domain.FishBreakoutScore">
+        <id column="id" property="id"/>
+        <result column="user_id" property="userId"/>
+        <result column="best_cleared_pools" property="bestClearedPools"/>
+        <result column="best_released_fish" property="bestReleasedFish"/>
+        <result column="best_mistakes" property="bestMistakes"/>
+        <result column="best_duration" property="bestDuration"/>
+        <result column="achieved_at" property="achievedAt"/>
+        <result column="created_at" property="createdAt"/>
+        <result column="updated_at" property="updatedAt"/>
+    </resultMap>
+
+    <select id="selectByUserId" resultMap="fishBreakoutScoreMap">
+        SELECT * FROM fish_breakout_score WHERE user_id = #{userId}
+    </select>
+
+    <insert id="insert" parameterType="com.fishingtime.game.domain.FishBreakoutScore"
+            useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO fish_breakout_score (user_id, best_cleared_pools, best_released_fish, best_mistakes, best_duration, achieved_at)
+        VALUES (#{userId}, #{bestClearedPools}, #{bestReleasedFish}, #{bestMistakes}, #{bestDuration}, NOW())
+    </insert>
+
+    <!-- 仅在严格更优时更新：清空池数更高，或相同且放生数更高（与排行规则一致）；非更优则不更新 -->
+    <update id="updateBest">
+        UPDATE fish_breakout_score
+        SET best_cleared_pools = #{dto.clearedPools},
+            best_released_fish = #{dto.releasedFish},
+            best_mistakes = #{dto.mistakes},
+            best_duration = #{dto.duration},
+            achieved_at = NOW()
+        WHERE user_id = #{userId}
+          AND (
+            best_cleared_pools &lt; #{dto.clearedPools}
+            OR (best_cleared_pools = #{dto.clearedPools} AND best_released_fish &lt; #{dto.releasedFish})
+          )
+    </update>
+
+    <!-- 排行榜：清空池数降序 → 放生总数降序 → 昵称升序 -->
+    <select id="selectRank" resultType="java.util.HashMap">
+        SELECT
+            s.best_cleared_pools AS clearedPools,
+            s.best_released_fish AS releasedFish,
+            s.best_mistakes AS mistakes,
+            u.nickname AS nickname
+        FROM fish_breakout_score s
+        LEFT JOIN user u ON u.id = s.user_id
+        ORDER BY s.best_cleared_pools DESC, s.best_released_fish DESC, u.nickname ASC
+        LIMIT #{limit}
+    </select>
+</mapper>

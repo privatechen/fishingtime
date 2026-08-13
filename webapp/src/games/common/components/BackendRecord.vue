@@ -13,6 +13,8 @@ const props = defineProps<{
   submitBody?: (result: object) => Record<string, unknown>
   /** 最佳成绩展示文案（默认：我的最高分 X · 最高连对 Y） */
   bestDisplay?: (myBest: object | null) => string
+  /** 手动保存：true 时不自动保存，显示「保存成绩」按钮点击才提交（默认 false 自动保存） */
+  manual?: boolean
 }>()
 
 const emit = defineEmits<{ (e: 'saved'): void }>()
@@ -27,6 +29,8 @@ const authPassword = ref('')
 const authConfirm = ref('')
 const authError = ref('')
 const authSubmitting = ref(false)
+/** 手动模式 + 未登录时，点击「保存成绩」后展开注册/登录表单 */
+const showAuth = ref(false)
 
 /** 得分制默认提交体（选颜色/方向陷阱） */
 function defaultSubmitBody(r: any): Record<string, unknown> {
@@ -51,14 +55,24 @@ const bestText = computed(() =>
   props.bestDisplay ? props.bestDisplay(myBest.value) : defaultBestDisplay(myBest.value),
 )
 
-/** 结果页渲染即自动触发：已登录直接保存，未登录显示注册引导 */
+/** 结果页渲染即自动触发：已登录直接保存，未登录显示注册引导（manual 模式不自动保存） */
 onMounted(() => {
-  if (isLoggedIn.value) {
+  if (!props.manual && isLoggedIn.value) {
     void save()
   } else {
     recordState.value = 'idle'
   }
 })
+
+/** 手动模式：点击「保存成绩」——已登录直接保存，未登录展开注册/登录表单 */
+function onManualSave(): void {
+  if (isLoggedIn.value) {
+    recordState.value = 'idle'
+    void save()
+  } else {
+    showAuth.value = true
+  }
+}
 
 async function save(): Promise<void> {
   recordState.value = 'saving'
@@ -141,16 +155,22 @@ async function handleAuthSubmit(): Promise<void> {
 
 <template>
   <div class="record-area">
-    <template v-if="isLoggedIn">
-      <p v-if="recordState === 'saving'" class="record-tip">正在自动保存成绩...</p>
-      <p v-else-if="recordState === 'saved'" class="record-tip record-ok">
-        ✓ 已自动保存 · {{ bestText }}
-      </p>
-      <p v-else-if="recordState === 'error'" class="record-tip record-error">
-        成绩保存失败，请稍后重试
-      </p>
+    <template v-if="recordState === 'saving'">
+      <p class="record-tip">{{ manual ? '正在保存成绩...' : '正在自动保存成绩...' }}</p>
     </template>
-    <template v-else>
+
+    <template v-else-if="recordState === 'saved'">
+      <p class="record-tip record-ok">✓ 已{{ manual ? '保存' : '自动保存' }} · {{ bestText }}</p>
+    </template>
+
+    <!-- 手动模式：保存成绩按钮（idle 或 error 可重试；未登录首次点击展开表单） -->
+    <template v-else-if="manual && !showAuth">
+      <p v-if="recordState === 'error'" class="record-tip record-error">成绩保存失败，请重试</p>
+      <button class="auth-submit" @click="onManualSave">保存成绩</button>
+    </template>
+
+    <!-- 未登录：注册/登录表单（自动模式默认展示；手动模式点击保存后展开） -->
+    <template v-else-if="!isLoggedIn">
       <p class="record-tip">本局成绩未记录，注册后可保存成绩并参与排行。</p>
       <div class="auth-mode">
         <button :class="{ active: authMode === 'register' }" @click="switchAuthMode('register')">
@@ -172,6 +192,11 @@ async function handleAuthSubmit(): Promise<void> {
       <button class="auth-submit" :disabled="authSubmitting" @click="handleAuthSubmit">
         {{ authSubmitting ? '提交中...' : authMode === 'register' ? '注册并保存' : '登录并保存' }}
       </button>
+    </template>
+
+    <!-- 自动模式：登录后保存失败的错误提示 -->
+    <template v-else-if="recordState === 'error'">
+      <p class="record-tip record-error">成绩保存失败，请稍后重试</p>
     </template>
   </div>
 </template>
