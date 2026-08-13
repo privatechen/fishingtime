@@ -4,10 +4,11 @@
  * 未来新增游戏：在此数组增加一项 + 新增对应分包组件/引擎
  * 大厅组件零改动，自动渲染新卡片
  */
-import colorFocusCover from '@/assets/png/games/颜色陷阱.png'
-import directionTrapCover from '@/assets/png/games/方向陷阱.png'
-import colorHunterCover from '@/assets/png/games/颜色捕手.png'
-import cover2048 from '@/assets/png/games/2048.png'
+import colorFocusCover from '@/assets/png/games/small/颜色陷阱.png'
+import directionTrapCover from '@/assets/png/games/small/方向陷阱.png'
+import colorHunterCover from '@/assets/png/games/small/颜色捕手.png'
+import cover2048 from '@/assets/png/games/small/2048.png'
+import fishBreakoutCover from '@/assets/png/games/small/鱼群突围.png'
 
 export interface GameConfig {
   /** 游戏唯一标识，同时是路由路径 */
@@ -32,18 +33,10 @@ export const games: GameConfig[] = [
     path: '/games/2048',
   },
   {
-    id: 'collision',
-    title: '鱼群碰撞',
-    desc: '选对数字门，让鱼群冲到终点',
-    cover: '🐟',
-    status: 'available',
-    path: '/games/collision',
-  },
-  {
     id: 'fish-breakout',
     title: '鱼群突围',
     desc: '30 秒连续清空鱼池',
-    cover: '🐟',
+    cover: fishBreakoutCover,
     status: 'available',
     path: '/games/fish-breakout',
   },
