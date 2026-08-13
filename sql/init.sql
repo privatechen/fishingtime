@@ -113,3 +113,23 @@ CREATE TABLE IF NOT EXISTS `fish_breakout_score` (
     UNIQUE KEY `uk_user_id` (`user_id`),
     KEY `idx_best_cleared_pools` (`best_cleared_pools`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='鱼群突围最佳成绩表（每用户一行）';
+
+-- ---------------------------------------------------------
+-- 极限捞鱼最佳成绩表（每用户一行）
+-- 排行规则：best_score 降序 → best_puffer_mistakes 升序 → achieved_at 升序
+-- ---------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `extreme_fishing_score` (
+    `id`                    BIGINT      PRIMARY KEY AUTO_INCREMENT,
+    `user_id`               BIGINT      NOT NULL             COMMENT '关联 user.id，一人一行',
+    `best_score`            INT         NOT NULL DEFAULT 0   COMMENT '最高总分（排行榜依据，只增不减）',
+    `best_caught_fish`      INT         DEFAULT NULL         COMMENT '最佳记录捕获鱼数',
+    `best_perfect_count`    INT         DEFAULT NULL         COMMENT '最佳记录 PERFECT NET 次数',
+    `best_max_combo`        INT         DEFAULT NULL         COMMENT '最佳记录最高 Combo',
+    `best_puffer_mistakes`  INT         NOT NULL DEFAULT 0   COMMENT '最佳记录河豚失误数（同分时少者优）',
+    `achieved_at`           DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '最近一次刷新最佳的时间',
+    `created_at`            DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `updated_at`            DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+    UNIQUE KEY `uk_user_id` (`user_id`),
+    KEY `idx_best_score` (`best_score`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='极限捞鱼最佳成绩表（每用户一行）';

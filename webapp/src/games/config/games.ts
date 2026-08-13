@@ -41,6 +41,14 @@ export const games: GameConfig[] = [
     path: '/games/fish-breakout',
   },
   {
+    id: 'extreme-fishing',
+    title: '极限捞鱼',
+    desc: '拖动撒网，30 秒冲分',
+    cover: '🎣',
+    status: 'available',
+    path: '/games/extreme-fishing',
+  },
+  {
     id: 'color-focus',
     title: '选颜色',
     desc: '40 秒专注力挑战',

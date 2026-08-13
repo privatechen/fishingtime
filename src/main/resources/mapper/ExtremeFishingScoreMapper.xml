@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.fishingtime.game.mapper.ExtremeFishingScoreMapper">
+
+    <resultMap id="extremeFishingScoreMap" type="com.fishingtime.game.domain.ExtremeFishingScore">
+        <id column="id" property="id"/>
+        <result column="user_id" property="userId"/>
+        <result column="best_score" property="bestScore"/>
+        <result column="best_caught_fish" property="bestCaughtFish"/>
+        <result column="best_perfect_count" property="bestPerfectCount"/>
+        <result column="best_max_combo" property="bestMaxCombo"/>
+        <result column="best_puffer_mistakes" property="bestPufferMistakes"/>
+        <result column="achieved_at" property="achievedAt"/>
+        <result column="created_at" property="createdAt"/>
+        <result column="updated_at" property="updatedAt"/>
+    </resultMap>
+
+    <select id="selectByUserId" resultMap="extremeFishingScoreMap">
+        SELECT * FROM extreme_fishing_score WHERE user_id = #{userId}
+    </select>
+
+    <insert id="insert" parameterType="com.fishingtime.game.domain.ExtremeFishingScore"
+            useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO extreme_fishing_score (user_id, best_score, best_caught_fish, best_perfect_count, best_max_combo, best_puffer_mistakes, achieved_at)
+        VALUES (#{userId}, #{bestScore}, #{bestCaughtFish}, #{bestPerfectCount}, #{bestMaxCombo}, #{bestPufferMistakes}, NOW())
+    </insert>
+
+    <!-- 仅在严格更优时更新：总分更高，或同分且河豚失误更少（与排行规则一致） -->
+    <update id="updateBest">
+        UPDATE extreme_fishing_score
+        SET best_score = #{dto.score},
+            best_caught_fish = #{dto.caughtFish},
+            best_perfect_count = #{dto.perfectCount},
+            best_max_combo = #{dto.maxCombo},
+            best_puffer_mistakes = #{dto.pufferMistakes},
+            achieved_at = NOW()
+        WHERE user_id = #{userId}
+          AND (
+            best_score &lt; #{dto.score}
+            OR (best_score = #{dto.score} AND best_puffer_mistakes &gt; #{dto.pufferMistakes})
+          )
+    </update>
+
+    <!-- 排行榜：总分降序 → 河豚失误升序 → 达成分数时间升序 -->
+    <select id="selectRank" resultType="java.util.HashMap">
+        SELECT
+            s.best_score AS score,
+            u.nickname AS nickname
+        FROM extreme_fishing_score s
+        LEFT JOIN user u ON u.id = s.user_id
+        ORDER BY s.best_score DESC, s.best_puffer_mistakes ASC, s.achieved_at ASC
+        LIMIT #{limit}
+    </select>
+</mapper>

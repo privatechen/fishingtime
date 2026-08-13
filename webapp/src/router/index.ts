@@ -40,6 +40,11 @@ const router = createRouter({
       component: () => import('@/games/fish-breakout/components/FishBreakoutGameView.vue'),
     },
     {
+      path: '/games/extreme-fishing',
+      name: 'gameExtremeFishing',
+      component: () => import('@/games/extreme-fishing/components/ExtremeFishingGameView.vue'),
+    },
+    {
       path: '/games/color-focus',
       name: 'gameColorFocus',
       component: () => import('@/games/color-focus/components/ColorFocusGameView.vue'),

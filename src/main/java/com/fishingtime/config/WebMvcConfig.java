@@ -30,7 +30,7 @@ public class WebMvcConfig implements WebMvcConfigurer {
                 .addPathPatterns("/api/**");
         registry.addInterceptor(loginInterceptor)
                 .addPathPatterns("/api/**")
-                .excludePathPatterns("/api/auth/register", "/api/auth/login", "/api/auth/wx-login", "/api/auth/wx-register", "/api/users/**", "/api/hot/**", "/api/region/**", "/api/weather/**", "/api/health/**", "/api/daily-sentence/**", "/api/feedback", "/api/games/2048/rank", "/api/games/color-focus/rank", "/api/games/direction-trap/rank", "/api/games/color-hunter/rank", "/api/games/fish-breakout/rank");
+                .excludePathPatterns("/api/auth/register", "/api/auth/login", "/api/auth/wx-login", "/api/auth/wx-register", "/api/users/**", "/api/hot/**", "/api/region/**", "/api/weather/**", "/api/health/**", "/api/daily-sentence/**", "/api/feedback", "/api/games/2048/rank", "/api/games/color-focus/rank", "/api/games/direction-trap/rank", "/api/games/color-hunter/rank", "/api/games/fish-breakout/rank", "/api/games/extreme-fishing/rank");
     }
 
     @Override
