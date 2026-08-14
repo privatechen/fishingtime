@@ -57,4 +57,14 @@
         ORDER BY s.best_score DESC, s.achieved_at ASC
         LIMIT #{limit}
     </select>
+    <select id="selectAllRank" resultType="java.util.HashMap">
+        SELECT
+            s.user_id AS userId,
+            u.nickname AS nickname,
+            s.best_score AS score,
+            NULL AS secondaryScore
+        FROM direction_trap_score s
+        LEFT JOIN user u ON u.id = s.user_id
+        ORDER BY s.best_score DESC, s.achieved_at ASC
+    </select>
 </mapper>

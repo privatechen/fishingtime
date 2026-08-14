@@ -23,4 +23,5 @@ public interface FishBreakoutScoreMapper {
 
     /** 排行榜 Top20（JOIN user 表反查昵称） */
     List<Map<String, Object>> selectRank(@Param("limit") int limit);
+    List<Map<String, Object>> selectAllRank();
 }

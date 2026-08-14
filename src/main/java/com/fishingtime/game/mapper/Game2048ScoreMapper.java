@@ -5,6 +5,7 @@ import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * 2048 分数 Mapper
@@ -25,4 +26,5 @@ public interface Game2048ScoreMapper {
 
     /** 排行榜（JOIN user 表反查昵称） */
     List<java.util.Map<String, Object>> selectRank(@Param("limit") int limit);
+    List<Map<String, Object>> selectAllRank();
 }

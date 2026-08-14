@@ -23,4 +23,5 @@ public interface ColorHunterScoreMapper {
 
     /** 排行榜 Top20（按 best_final_time 升序，JOIN user 反查昵称） */
     List<Map<String, Object>> selectRank(@Param("limit") int limit);
+    List<Map<String, Object>> selectAllRank();
 }

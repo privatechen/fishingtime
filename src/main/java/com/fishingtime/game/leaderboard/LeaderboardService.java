@@ -1,5 +1,11 @@
 package com.fishingtime.game.leaderboard;
 
+import com.fishingtime.game.mapper.ColorFocusScoreMapper;
+import com.fishingtime.game.mapper.ColorHunterScoreMapper;
+import com.fishingtime.game.mapper.DirectionTrapScoreMapper;
+import com.fishingtime.game.mapper.ExtremeFishingScoreMapper;
+import com.fishingtime.game.mapper.FishBreakoutScoreMapper;
+import com.fishingtime.game.mapper.Game2048ScoreMapper;
 import com.fishingtime.game.mapper.GameScoreMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -30,6 +36,12 @@ public class LeaderboardService {
     private final GameScoreMapper gameScoreMapper;
     private final LocalRankingCache cache;
     private final GameRankingConfig config;
+    private final Game2048ScoreMapper game2048ScoreMapper;
+    private final ColorFocusScoreMapper colorFocusScoreMapper;
+    private final DirectionTrapScoreMapper directionTrapScoreMapper;
+    private final ColorHunterScoreMapper colorHunterScoreMapper;
+    private final FishBreakoutScoreMapper fishBreakoutScoreMapper;
+    private final ExtremeFishingScoreMapper extremeFishingScoreMapper;
 
     public LeaderboardDTO getLeaderboard(String gameCode, String period, int page, int pageSize, Long userId) {
         if (!config.isKnown(gameCode)) {
@@ -103,7 +115,13 @@ public class LeaderboardService {
             end = MAX_DATE;
         }
 
-        List<Map<String, Object>> rows = gameScoreMapper.selectRankByRange(gameCode, start, end, direction, useSecondary);
+        // TODAY 从 game_score（每局日志）按当天聚合；ALL 走各游戏 best 表（历史最佳，PRD §7/§16）
+        List<Map<String, Object>> rows;
+        if ("TODAY".equals(period)) {
+            rows = gameScoreMapper.selectRankByRange(gameCode, start, end, direction, useSecondary);
+        } else {
+            rows = queryAllRank(gameCode);
+        }
         List<RankingItem> list = new ArrayList<>(rows.size());
         Map<Long, Integer> userMap = new HashMap<>();
         int rank = 1;
@@ -118,5 +136,25 @@ public class LeaderboardService {
             rank++;
         }
         return new RankingSnapshot(list, userMap, "TODAY".equals(period) ? today : null);
+    }
+
+    /** 总榜数据源：各游戏 best 表全量（已按该游戏排序规则排好） */
+    private List<Map<String, Object>> queryAllRank(String gameCode) {
+        switch (gameCode) {
+            case "2048":
+                return game2048ScoreMapper.selectAllRank();
+            case "color-focus":
+                return colorFocusScoreMapper.selectAllRank();
+            case "direction-trap":
+                return directionTrapScoreMapper.selectAllRank();
+            case "color-hunter":
+                return colorHunterScoreMapper.selectAllRank();
+            case "fish-breakout":
+                return fishBreakoutScoreMapper.selectAllRank();
+            case "extreme-fishing":
+                return extremeFishingScoreMapper.selectAllRank();
+            default:
+                throw new IllegalArgumentException("未知游戏: " + gameCode);
+        }
     }
 }
