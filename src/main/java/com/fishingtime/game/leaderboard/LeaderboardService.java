@@ -54,11 +54,11 @@ public class LeaderboardService {
 
         List<RankingItem> all = snap.getRankingList();
         int total = all.size();
-        int from = Math.min(Math.max(page - 1, 0) * pageSize, total);
-        int to = Math.min(from + pageSize, total);
+        // 最多展示 Top 20（不做滚动加载更多）；myRank 仍从快照取真实名次
+        int to = Math.min(20, total);
 
         List<LeaderboardDTO.Item> items = new ArrayList<>();
-        for (int i = from; i < to; i++) {
+        for (int i = 0; i < to; i++) {
             RankingItem item = all.get(i);
             LeaderboardDTO.Item dto = new LeaderboardDTO.Item();
             dto.setRank(item.getRank());
