@@ -5,6 +5,7 @@ import com.fishingtime.game.dto.FishBreakoutRankItemDTO;
 import com.fishingtime.game.dto.FishBreakoutScoreSubmitDTO;
 import com.fishingtime.game.mapper.FishBreakoutScoreMapper;
 import com.fishingtime.game.service.FishBreakoutScoreService;
+import com.fishingtime.game.service.GameScoreLogService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -25,6 +26,7 @@ public class FishBreakoutScoreServiceImpl implements FishBreakoutScoreService {
     private static final int TOP_LIMIT = 20;
 
     private final FishBreakoutScoreMapper scoreMapper;
+    private final GameScoreLogService gameScoreLogService;
 
     @Override
     public List<FishBreakoutRankItemDTO> getRank() {
@@ -69,5 +71,7 @@ public class FishBreakoutScoreServiceImpl implements FishBreakoutScoreService {
             scoreMapper.updateBest(userId, dto);
             log.info("[鱼群突围] 用户 {} 更新最佳成绩 清空{}池 放生{}条", userId, dto.getClearedPools(), dto.getReleasedFish());
         }
+        // 每局成绩落 game_score 日志（score=清空池数，secondary=放生数）
+        gameScoreLogService.record(userId, "fish-breakout", dto.getClearedPools(), dto.getReleasedFish());
     }
 }

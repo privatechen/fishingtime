@@ -5,6 +5,7 @@ import com.fishingtime.game.dto.RankItemDTO;
 import com.fishingtime.game.dto.ScoreSubmitDTO;
 import com.fishingtime.game.mapper.Game2048ScoreMapper;
 import com.fishingtime.game.service.Game2048ScoreService;
+import com.fishingtime.game.service.GameScoreLogService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -25,6 +26,7 @@ public class Game2048ScoreServiceImpl implements Game2048ScoreService {
     private static final int TOP_LIMIT = 20;
 
     private final Game2048ScoreMapper scoreMapper;
+    private final GameScoreLogService gameScoreLogService;
 
     @Override
     public List<RankItemDTO> getRank() {
@@ -67,5 +69,7 @@ public class Game2048ScoreServiceImpl implements Game2048ScoreService {
                 log.info("[2048] 用户 {} 更新最高分 {}", userId, dto.getBestScore());
             }
         }
+        // 每局成绩落 game_score 日志（今日榜事实来源）
+        gameScoreLogService.record(userId, "2048", dto.getBestScore(), null);
     }
 }

@@ -133,3 +133,19 @@ CREATE TABLE IF NOT EXISTS `extreme_fishing_score` (
     UNIQUE KEY `uk_user_id` (`user_id`),
     KEY `idx_best_score` (`best_score`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='极限捞鱼最佳成绩表（每用户一行）';
+
+-- ---------------------------------------------------------
+-- 小游戏每局成绩日志表（今日榜事实来源）
+-- 每次提交成绩 INSERT 一行；score 为主排行值（分数型=分数、颜色猎手=耗时ms、鱼群突围=清空池数）
+-- ---------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `game_score` (
+    `id`              BIGINT      PRIMARY KEY AUTO_INCREMENT,
+    `user_id`         BIGINT      NOT NULL             COMMENT '关联 user.id',
+    `game_code`       VARCHAR(32) NOT NULL             COMMENT '2048/color-focus/direction-trap/color-hunter/fish-breakout/extreme-fishing',
+    `score`           INT         NOT NULL             COMMENT '本局主排行值（分数型=分数；颜色猎手=耗时ms；鱼群突围=清空池数）',
+    `secondary_score` INT         DEFAULT NULL         COMMENT '次级指标（鱼群突围=放生数；其余 NULL）',
+    `played_at`       DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '本局完成时间（北京时间当天判定依据）',
+    `valid`           TINYINT     NOT NULL DEFAULT 1   COMMENT '是否有效成绩（防刷）',
+    KEY `idx_game_played` (`game_code`, `played_at`),
+    KEY `idx_game_user` (`game_code`, `user_id`, `played_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='小游戏每局成绩日志表';

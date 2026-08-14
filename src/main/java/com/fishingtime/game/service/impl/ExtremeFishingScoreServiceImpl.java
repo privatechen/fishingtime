@@ -5,6 +5,7 @@ import com.fishingtime.game.dto.ExtremeFishingRankItemDTO;
 import com.fishingtime.game.dto.ExtremeFishingScoreSubmitDTO;
 import com.fishingtime.game.mapper.ExtremeFishingScoreMapper;
 import com.fishingtime.game.service.ExtremeFishingScoreService;
+import com.fishingtime.game.service.GameScoreLogService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -25,6 +26,7 @@ public class ExtremeFishingScoreServiceImpl implements ExtremeFishingScoreServic
     private static final int TOP_LIMIT = 20;
 
     private final ExtremeFishingScoreMapper scoreMapper;
+    private final GameScoreLogService gameScoreLogService;
 
     @Override
     public List<ExtremeFishingRankItemDTO> getRank() {
@@ -68,5 +70,7 @@ public class ExtremeFishingScoreServiceImpl implements ExtremeFishingScoreServic
             scoreMapper.updateBest(userId, dto);
             log.info("[极限捞鱼] 用户 {} 更新最佳成绩 {}", userId, dto.getScore());
         }
+        // 每局成绩落 game_score 日志（今日榜事实来源）
+        gameScoreLogService.record(userId, "extreme-fishing", dto.getScore(), null);
     }
 }

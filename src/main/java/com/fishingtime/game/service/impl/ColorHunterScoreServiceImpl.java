@@ -5,6 +5,7 @@ import com.fishingtime.game.dto.ColorHunterRankItemDTO;
 import com.fishingtime.game.dto.ColorHunterScoreSubmitDTO;
 import com.fishingtime.game.mapper.ColorHunterScoreMapper;
 import com.fishingtime.game.service.ColorHunterScoreService;
+import com.fishingtime.game.service.GameScoreLogService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -25,6 +26,7 @@ public class ColorHunterScoreServiceImpl implements ColorHunterScoreService {
     private static final int TOP_LIMIT = 20;
 
     private final ColorHunterScoreMapper scoreMapper;
+    private final GameScoreLogService gameScoreLogService;
 
     @Override
     public List<ColorHunterRankItemDTO> getRank() {
@@ -67,5 +69,7 @@ public class ColorHunterScoreServiceImpl implements ColorHunterScoreService {
             scoreMapper.updateBest(userId, dto);
             log.info("[颜色猎手] 用户 {} 更新最佳成绩 {}ms", userId, dto.getBestFinalTime());
         }
+        // 每局成绩落 game_score 日志（耗时型，score 存 ms）
+        gameScoreLogService.record(userId, "color-hunter", dto.getBestFinalTime(), null);
     }
 }

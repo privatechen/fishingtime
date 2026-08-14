@@ -5,6 +5,7 @@ import com.fishingtime.game.dto.DirectionTrapScoreSubmitDTO;
 import com.fishingtime.game.dto.RankItemDTO;
 import com.fishingtime.game.mapper.DirectionTrapScoreMapper;
 import com.fishingtime.game.service.DirectionTrapScoreService;
+import com.fishingtime.game.service.GameScoreLogService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -25,6 +26,7 @@ public class DirectionTrapScoreServiceImpl implements DirectionTrapScoreService 
     private static final int TOP_LIMIT = 20;
 
     private final DirectionTrapScoreMapper scoreMapper;
+    private final GameScoreLogService gameScoreLogService;
 
     @Override
     public List<RankItemDTO> getRank() {
@@ -68,5 +70,7 @@ public class DirectionTrapScoreServiceImpl implements DirectionTrapScoreService 
             scoreMapper.updateBest(userId, dto);
             log.info("[方向陷阱] 用户 {} 更新最佳成绩 {}", userId, dto.getBestScore());
         }
+        // 每局成绩落 game_score 日志（今日榜事实来源）
+        gameScoreLogService.record(userId, "direction-trap", dto.getBestScore(), null);
     }
 }

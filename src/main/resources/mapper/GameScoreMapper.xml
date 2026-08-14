@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.fishingtime.game.mapper.GameScoreMapper">
+
+    <insert id="insert" parameterType="com.fishingtime.game.domain.GameScore"
+            useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO game_score (user_id, game_code, score, secondary_score, played_at, valid)
+        VALUES (#{userId}, #{gameCode}, #{score}, #{secondaryScore}, #{playedAt}, #{valid})
+    </insert>
+
+    <!-- 按时间范围聚合每用户最佳成绩；direction 决定 MAX/MIN 与排序方向；useSecondary 决定是否纳入次级指标排序 -->
+    <select id="selectRankByRange" resultType="java.util.HashMap">
+        SELECT
+            gs.user_id AS userId,
+            u.nickname AS nickname,
+            <choose>
+                <when test="direction == 'asc'">MIN(gs.score)</when>
+                <otherwise>MAX(gs.score)</otherwise>
+            </choose> AS score,
+            MAX(gs.secondary_score) AS secondaryScore,
+            MIN(gs.played_at) AS achievedAt
+        FROM game_score gs
+        LEFT JOIN user u ON u.id = gs.user_id
+        WHERE gs.game_code = #{gameCode}
+          AND gs.valid = 1
+          AND gs.played_at &gt;= #{start}
+          AND gs.played_at &lt; #{end}
+        GROUP BY gs.user_id, u.nickname
+        ORDER BY score
+        <choose>
+            <when test="direction == 'asc'">ASC</when>
+            <otherwise>DESC</otherwise>
+        </choose>,
+        <if test="useSecondary">
+            MAX(gs.secondary_score) DESC,
+        </if>
+        MIN(gs.played_at) ASC
+    </select>
+
+    <select id="countDistinctUsers" resultType="long">
+        SELECT COUNT(DISTINCT gs.user_id)
+        FROM game_score gs
+        WHERE gs.game_code = #{gameCode}
+          AND gs.valid = 1
+          AND gs.played_at &gt;= #{start}
+          AND gs.played_at &lt; #{end}
+    </select>
+
+    <!-- 用户在某时间范围内的最佳成绩（提交后判断是否变化） -->
+    <select id="selectUserBestInRange" resultType="java.lang.Integer">
+        SELECT
+            <choose>
+                <when test="direction == 'asc'">MIN(gs.score)</when>
+                <otherwise>MAX(gs.score)</otherwise>
+            </choose>
+        FROM game_score gs
+        WHERE gs.game_code = #{gameCode}
+          AND gs.user_id = #{userId}
+          AND gs.valid = 1
+          AND gs.played_at &gt;= #{start}
+          AND gs.played_at &lt; #{end}
+    </select>
+</mapper>
