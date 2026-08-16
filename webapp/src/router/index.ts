@@ -60,6 +60,11 @@ const router = createRouter({
       component: () => import('@/games/color-hunter/components/ColorHunterGameView.vue'),
     },
     {
+      path: '/games/detail',
+      name: 'gameDetail',
+      component: () => import('@/games/detail/DetailGameView.vue'),
+    },
+    {
       path: '/profile',
       name: 'profile',
       component: () => import('@/views/ProfileView.vue'),

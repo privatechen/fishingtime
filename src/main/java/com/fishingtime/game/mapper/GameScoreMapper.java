@@ -32,6 +32,15 @@ public interface GameScoreMapper {
                             @Param("start") String start,
                             @Param("end") String end);
 
+    /**
+     * 混合方向最佳一局排名（《细节》今日榜）。
+     * 主指标与次级指标方向相反（答对数 DESC → 用时 ASC），无法用 MAX/MIN 聚合表达，
+     * 故用 MySQL8 窗口函数每人取「主指标最高、同分次级最小、再同时达成最早」那一局。
+     */
+    List<Map<String, Object>> selectBestGameRankByRange(@Param("gameCode") String gameCode,
+                                                        @Param("start") String start,
+                                                        @Param("end") String end);
+
     /** 用户在某时间范围内的最佳成绩（提交后判断今日/历史最佳是否变化） */
     Integer selectUserBestInRange(@Param("gameCode") String gameCode,
                                   @Param("userId") Long userId,

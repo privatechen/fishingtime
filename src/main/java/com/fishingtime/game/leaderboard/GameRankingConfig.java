@@ -32,6 +32,8 @@ public class GameRankingConfig {
         SPECS.put("color-hunter", new Spec("asc", false));
         SPECS.put("fish-breakout", new Spec("desc", true));
         SPECS.put("extreme-fishing", new Spec("desc", false));
+        // 《细节》：答对数降序为主，用时升序为次级，走独立窗口函数查询
+        SPECS.put("detail", new Spec("desc", true));
     }
 
     private static final Spec DEFAULT = new Spec("desc", false);

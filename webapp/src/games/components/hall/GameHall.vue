@@ -55,6 +55,16 @@ async function loadBestScores() {
   } catch {
     // 加载失败不展示
   }
+  try {
+    // 《细节》最佳：答对题数
+    const res = await fetch('/api/games/detail/my-best', { credentials: 'same-origin' })
+    const json = await res.json()
+    if (json.code === 200 && json.data) {
+      bestMap.value['detail'] = json.data.bestCorrectCount ?? 0
+    }
+  } catch {
+    // 加载失败不展示
+  }
 }
 
 /** 每个游戏的个人最佳（游客不显示） */

@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.fishingtime.game.mapper.DetailScoreMapper">
+
+    <resultMap id="detailScoreMap" type="com.fishingtime.game.domain.DetailScore">
+        <id column="id" property="id"/>
+        <result column="user_id" property="userId"/>
+        <result column="best_correct_count" property="bestCorrectCount"/>
+        <result column="best_answer_time_ms" property="bestAnswerTimeMs"/>
+        <result column="achieved_at" property="achievedAt"/>
+        <result column="created_at" property="createdAt"/>
+        <result column="updated_at" property="updatedAt"/>
+    </resultMap>
+
+    <select id="selectByUserId" resultMap="detailScoreMap">
+        SELECT * FROM detail_score WHERE user_id = #{userId}
+    </select>
+
+    <insert id="insert" parameterType="com.fishingtime.game.domain.DetailScore"
+            useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO detail_score (user_id, best_correct_count, best_answer_time_ms, achieved_at)
+        VALUES (#{userId}, #{bestCorrectCount}, #{bestAnswerTimeMs}, NOW())
+    </insert>
+
+    <!-- 只增不减：答对数更高刷新；答对数相同且用时更短也刷新 -->
+    <update id="updateBest">
+        UPDATE detail_score
+        SET best_correct_count = CASE
+                WHEN #{correctCount} > best_correct_count THEN #{correctCount}
+                ELSE best_correct_count END,
+            best_answer_time_ms = CASE
+                WHEN #{correctCount} > best_correct_count THEN #{answerTimeMs}
+                WHEN #{correctCount} = best_correct_count AND #{answerTimeMs} &lt; best_answer_time_ms THEN #{answerTimeMs}
+                ELSE best_answer_time_ms END,
+            achieved_at = NOW()
+        WHERE user_id = #{userId}
+          AND ( #{correctCount} > best_correct_count
+                OR ( #{correctCount} = best_correct_count AND #{answerTimeMs} &lt; best_answer_time_ms ) )
+    </update>
+
+    <!-- 总榜：JOIN user 反查昵称；排序 答对数 DESC → 用时 ASC → 达成时间 ASC -->
+    <select id="selectAllRank" resultType="java.util.HashMap">
+        SELECT
+            s.user_id AS userId,
+            u.nickname AS nickname,
+            s.best_correct_count AS score,
+            s.best_answer_time_ms AS secondaryScore
+        FROM detail_score s
+        LEFT JOIN user u ON u.id = s.user_id
+        ORDER BY s.best_correct_count DESC, s.best_answer_time_ms ASC, s.achieved_at ASC
+    </select>
+</mapper>

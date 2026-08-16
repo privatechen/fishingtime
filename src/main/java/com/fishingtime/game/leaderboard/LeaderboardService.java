@@ -4,6 +4,7 @@ import com.fishingtime.game.mapper.ColorFocusScoreMapper;
 import com.fishingtime.game.mapper.ColorHunterScoreMapper;
 import com.fishingtime.game.mapper.DirectionTrapScoreMapper;
 import com.fishingtime.game.mapper.ExtremeFishingScoreMapper;
+import com.fishingtime.game.mapper.DetailScoreMapper;
 import com.fishingtime.game.mapper.FishBreakoutScoreMapper;
 import com.fishingtime.game.mapper.Game2048ScoreMapper;
 import com.fishingtime.game.mapper.GameScoreMapper;
@@ -42,6 +43,7 @@ public class LeaderboardService {
     private final ColorHunterScoreMapper colorHunterScoreMapper;
     private final FishBreakoutScoreMapper fishBreakoutScoreMapper;
     private final ExtremeFishingScoreMapper extremeFishingScoreMapper;
+    private final DetailScoreMapper detailScoreMapper;
 
     public LeaderboardDTO getLeaderboard(String gameCode, String period, int page, int pageSize, Long userId) {
         if (!config.isKnown(gameCode)) {
@@ -116,9 +118,14 @@ public class LeaderboardService {
         }
 
         // TODAY 从 game_score（每局日志）按当天聚合；ALL 走各游戏 best 表（历史最佳，PRD §7/§16）
+        // 《细节》主/次级排序方向相反（答对数 DESC → 用时 ASC），走窗口函数取每人最优一局
         List<Map<String, Object>> rows;
         if ("TODAY".equals(period)) {
-            rows = gameScoreMapper.selectRankByRange(gameCode, start, end, direction, useSecondary);
+            if ("detail".equals(gameCode)) {
+                rows = gameScoreMapper.selectBestGameRankByRange(gameCode, start, end);
+            } else {
+                rows = gameScoreMapper.selectRankByRange(gameCode, start, end, direction, useSecondary);
+            }
         } else {
             rows = queryAllRank(gameCode);
         }
@@ -153,6 +160,8 @@ public class LeaderboardService {
                 return fishBreakoutScoreMapper.selectAllRank();
             case "extreme-fishing":
                 return extremeFishingScoreMapper.selectAllRank();
+            case "detail":
+                return detailScoreMapper.selectAllRank();
             default:
                 throw new IllegalArgumentException("未知游戏: " + gameCode);
         }

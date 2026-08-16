@@ -74,6 +74,14 @@ export const games: GameConfig[] = [
     path: '/games/color-hunter',
   },
   {
+    id: 'detail',
+    title: '细节',
+    desc: '看图 10 秒，记住每一个细节',
+    cover: '👀',
+    status: 'available',
+    path: '/games/detail',
+  },
+  {
     id: 'minesweeper',
     title: '扫雷',
     desc: '经典益智扫雷游戏',
