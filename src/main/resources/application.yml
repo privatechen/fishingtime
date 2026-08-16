@@ -34,6 +34,11 @@ weather:
   default-adcode: 110000
   timeout-ms: 2000
 
+# 抖音热榜 API（uapis.cn，月度调用额度 → 独立限流调度；key 可按需改为环境变量注入）
+uapis:
+  key: uapi-ie_x95n1o7HfwiTJcN1IWf0RNNC1Jkvn-7XEbhxm
+  hotboard-api: https://uapis.cn/api/v1/misc/hotboard
+
 # 微信小程序配置（secret 用环境变量注入，不写死在版本库）
 wechat:
   appid: wx13a237243a856ba4

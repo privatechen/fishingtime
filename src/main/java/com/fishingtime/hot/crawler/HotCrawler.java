@@ -19,4 +19,12 @@ public interface HotCrawler {
 
     /** 抓取并解析热点列表 */
     List<HotItemDTO> fetch();
+
+    /**
+     * 是否为限流平台（如抖音热榜走有月度额度的 API）。
+     * true 时不会被常规 10 分钟定时刷新触发，改由独立限流调度器按时间窗口刷新。
+     */
+    default boolean quotaLimited() {
+        return false;
+    }
 }

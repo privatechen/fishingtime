@@ -102,6 +102,17 @@ export async function fetchToutiaoHot(): Promise<HotApiResult> {
   }))
 }
 
+export async function fetchDouyinHot(): Promise<HotApiResult> {
+  return fetchHotFromApi('douyin', (item: any, index: number) => ({
+    platform: 'douyin' as const,
+    rank: item.rank ?? (index + 1),
+    title: item.title ?? '',
+    hot: item.hotScore ?? '',
+    url: item.url ?? '',
+    normalizedHotScore: item.normalizedHotScore ?? 0,
+  }))
+}
+
 export async function fetchAllPlatforms(): Promise<Record<string, HotItem[]>> {
   await delay(300)
   return hotData

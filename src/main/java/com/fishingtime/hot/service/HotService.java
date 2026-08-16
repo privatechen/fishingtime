@@ -47,7 +47,14 @@ public class HotService {
     @Scheduled(fixedDelay = 600_000)
     public void scheduledRefresh() {
         log.info("[热榜] 定时刷新开始");
-        crawlers.forEach(this::refresh);
+        // 常规 10 分钟刷新只刷非限流平台（抖音等有额度限制的走独立调度）
+        crawlers.stream().filter(c -> !c.quotaLimited()).forEach(this::refresh);
+    }
+
+    /** 独立限流调度：只刷新 quotaLimited 平台（抖音热榜，2-6 点 30min / 其余 15min） */
+    public void refreshQuotaLimited() {
+        log.info("[热榜] 限流平台刷新开始");
+        crawlers.stream().filter(HotCrawler::quotaLimited).forEach(this::refresh);
     }
 
     /** 获取某平台的热榜数据及刷新时间。 */
@@ -67,6 +74,11 @@ public class HotService {
         return new HashMap<>(cache);
     }
 
+    /** 限流平台刷新间隔（分钟）：凌晨 2-6 点 30min，其余 15min */
+    private int intervalFor(int hour) {
+        return (hour >= 2 && hour < 6) ? 30 : 15;
+    }
+
     private void refresh(HotCrawler crawler) {
         String platform = crawler.platform();
         try {
@@ -75,8 +87,10 @@ public class HotService {
                 cache.put(platform, data);
                 String now = LocalDateTime.now().toString();
                 updateTimeMap.put(platform, now);
-                nextRefreshTimeMap.put(platform, LocalDateTime.now().plusMinutes(10).toString());
-                log.info("[热榜] {} 刷新成功，{} 条", platform, data.size());
+                // 限流平台（抖音）按时间窗口算下次刷新；其余固定 10 分钟
+                int nextMinutes = crawler.quotaLimited() ? intervalFor(LocalDateTime.now().getHour()) : 10;
+                nextRefreshTimeMap.put(platform, LocalDateTime.now().plusMinutes(nextMinutes).toString());
+                log.info("[热榜] {} 刷新成功，{} 条，下次 {}min 后", platform, data.size(), nextMinutes);
             } else {
                 log.warn("[热榜] {} 刷新结果为空，保留旧缓存", platform);
             }

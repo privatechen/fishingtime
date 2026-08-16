@@ -18,7 +18,8 @@ export default defineConfig({
     port: 3000,
     proxy: {
       '/api': {
-        target: 'http://localhost:8080',
+        // 用 127.0.0.1 避免本机 localhost 解析到 ::1 导致 Node 代理 ECONNRESET
+        target: 'http://127.0.0.1:8080',
         changeOrigin: true,
       },
     },
