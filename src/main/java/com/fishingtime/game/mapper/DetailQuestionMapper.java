@@ -15,6 +15,9 @@ public interface DetailQuestionMapper {
     /** 某图片下启用状态的题目（V1 每图 10 道，抽 6 用） */
     List<DetailQuestion> selectEnabledByImageKey(@Param("imageKey") String imageKey);
 
+    /** 某图片下全部题目（含停用；管理后台列表/编辑用） */
+    List<DetailQuestion> selectByImageKey(@Param("imageKey") String imageKey);
+
     /** 启用题目涉及的全部图片标识（作为本局可玩图片池） */
     List<String> selectEnabledImageKeys();
 

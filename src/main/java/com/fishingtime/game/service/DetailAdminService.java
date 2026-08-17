@@ -4,6 +4,7 @@ import com.fishingtime.common.dto.ErrorCode;
 import com.fishingtime.common.exception.BusinessException;
 import com.fishingtime.config.DetailProperties;
 import com.fishingtime.game.domain.DetailQuestion;
+import com.fishingtime.game.dto.DetailAdminImageVO;
 import com.fishingtime.game.dto.DetailAdminUploadResult;
 import com.fishingtime.game.mapper.DetailQuestionMapper;
 import lombok.RequiredArgsConstructor;
@@ -69,16 +70,30 @@ public class DetailAdminService {
 
     // ────────────── 上传 ──────────────
 
-    public DetailAdminUploadResult upload(MultipartFile file, String text) {
-        if (file == null || file.isEmpty()) {
-            throw new BusinessException(ErrorCode.PARAM_INVALID, "请上传图片");
+    /**
+     * 上传/更新：file 可选（编辑时只改题可不传，保留原图）。
+     * imageKey 优先用调用方显式指定；未指定时从文件名推导（新增场景）。
+     */
+    public DetailAdminUploadResult upload(MultipartFile file, String text, String explicitImageKey) {
+        boolean hasFile = file != null && !file.isEmpty();
+        if (!hasFile && (explicitImageKey == null || explicitImageKey.isBlank())) {
+            throw new BusinessException(ErrorCode.PARAM_INVALID, "请上传图片或指定图片标识");
         }
-        String imageKey = deriveImageKey(file.getOriginalFilename());
-        long existing = questionMapper.countByImageKey(imageKey);
+        String imageKey = (explicitImageKey != null && !explicitImageKey.isBlank())
+                ? explicitImageKey.trim()
+                : deriveImageKey(file.getOriginalFilename());
+        if (imageKey.isEmpty()) {
+            throw new BusinessException(ErrorCode.PARAM_INVALID, "图片标识不能为空");
+        }
 
-        // 先解析文本（失败则整体报错、不落盘不落库，避免留下孤儿图片）
+        long existing = questionMapper.countByImageKey(imageKey);
+        // 先解析文本（失败则整体报错、不落盘不落库，避免留下孤儿图片/半套题）
         List<DetailQuestion> questions = parseText(text, imageKey);
-        saveImage(file, imageKey);
+        if (hasFile) {
+            saveImage(file, imageKey);
+        } else if (existing == 0) {
+            throw new BusinessException(ErrorCode.PARAM_INVALID, "图片「" + imageKey + "」不存在，新增必须上传图片文件");
+        }
 
         // 整图替换：无论新增还是更新，都删旧插新，保证题库与文本一致
         questionMapper.deleteByImageKey(imageKey);
@@ -87,6 +102,30 @@ public class DetailAdminService {
         String action = existing > 0 ? "updated" : "created";
         log.info("[细节] 管理后台 {} 图片 {}，{} 道题", existing > 0 ? "更新" : "新增", imageKey, questions.size());
         return new DetailAdminUploadResult(imageKey, action, questions.size());
+    }
+
+    /** 全部图片 + 各自题目（管理后台列表/编辑用） */
+    public List<DetailAdminImageVO> listImages() {
+        List<String> keys = questionMapper.selectEnabledImageKeys();
+        List<DetailAdminImageVO> list = new ArrayList<>(keys.size());
+        for (String key : keys) {
+            List<DetailQuestion> qs = questionMapper.selectByImageKey(key);
+            list.add(new DetailAdminImageVO(key, qs.size(), qs));
+        }
+        return list;
+    }
+
+    /** 删除一张图 + 题目 + 图片文件（文件不存在则容忍） */
+    public void deleteImage(String imageKey) {
+        if (imageKey == null || imageKey.isBlank()) {
+            throw new BusinessException(ErrorCode.PARAM_INVALID, "图片标识不能为空");
+        }
+        questionMapper.deleteByImageKey(imageKey);
+        File f = new File(detailProperties.getImageDir(), imageKey + ".jpg");
+        if (f.exists() && !f.delete()) {
+            log.warn("[细节] 管理后台删除图片文件失败: {}", f);
+        }
+        log.info("[细节] 管理后台删除图片 {}", imageKey);
     }
 
     // ────────────── 内部 ──────────────

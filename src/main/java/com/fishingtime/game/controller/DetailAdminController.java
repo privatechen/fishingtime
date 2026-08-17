@@ -3,6 +3,7 @@ package com.fishingtime.game.controller;
 import com.fishingtime.common.dto.ApiResponse;
 import com.fishingtime.common.dto.ErrorCode;
 import com.fishingtime.common.exception.BusinessException;
+import com.fishingtime.game.dto.DetailAdminImageVO;
 import com.fishingtime.game.dto.DetailAdminLoginRequest;
 import com.fishingtime.game.dto.DetailAdminUploadResult;
 import com.fishingtime.game.service.DetailAdminService;
@@ -41,9 +42,28 @@ public class DetailAdminController {
     @PostMapping(value = "/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ApiResponse<DetailAdminUploadResult> upload(
             @RequestHeader(value = "X-Admin-Token", required = false) String token,
-            @RequestParam("file") MultipartFile file,
-            @RequestParam("text") String text) {
+            @RequestParam(value = "file", required = false) MultipartFile file,
+            @RequestParam("text") String text,
+            @RequestParam(value = "imageKey", required = false) String imageKey) {
         adminService.requireToken(token);
-        return ApiResponse.success(adminService.upload(file, text));
+        return ApiResponse.success(adminService.upload(file, text, imageKey));
+    }
+
+    /** 全部图片 + 题目（列表/编辑） */
+    @GetMapping("/images")
+    public ApiResponse<java.util.List<DetailAdminImageVO>> listImages(
+            @RequestHeader(value = "X-Admin-Token", required = false) String token) {
+        adminService.requireToken(token);
+        return ApiResponse.success(adminService.listImages());
+    }
+
+    /** 删除一张图 + 题目 + 图片文件 */
+    @DeleteMapping("/images/{imageKey}")
+    public ApiResponse<Void> deleteImage(
+            @RequestHeader(value = "X-Admin-Token", required = false) String token,
+            @PathVariable String imageKey) {
+        adminService.requireToken(token);
+        adminService.deleteImage(imageKey);
+        return ApiResponse.success();
     }
 }

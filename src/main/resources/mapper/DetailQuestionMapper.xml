@@ -15,6 +15,17 @@
         ORDER BY id
     </select>
 
+    <select id="selectByImageKey" resultType="com.fishingtime.game.domain.DetailQuestion">
+        SELECT
+            id, image_key AS imageKey, question_text AS questionText,
+            option_a AS optionA, option_b AS optionB, option_c AS optionC, option_d AS optionD,
+            correct_option AS correctOption, difficulty, status,
+            created_at AS createdAt, updated_at AS updatedAt
+        FROM detail_question
+        WHERE image_key = #{imageKey}
+        ORDER BY id
+    </select>
+
     <select id="selectEnabledImageKeys" resultType="java.lang.String">
         SELECT DISTINCT image_key
         FROM detail_question
