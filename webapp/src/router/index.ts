@@ -69,6 +69,11 @@ const router = createRouter({
       name: 'profile',
       component: () => import('@/views/ProfileView.vue'),
     },
+    {
+      path: '/admin/game',
+      name: 'adminGame',
+      component: () => import('@/views/AdminGameView.vue'),
+    },
   ],
 })
 

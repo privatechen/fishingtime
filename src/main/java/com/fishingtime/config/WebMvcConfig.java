@@ -4,8 +4,10 @@ import com.fishingtime.auth.CurrentUserArgumentResolver;
 import com.fishingtime.auth.LoginInterceptor;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.util.StringUtils;
 import org.springframework.web.method.support.HandlerMethodArgumentResolver;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
+import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 import java.util.List;
@@ -14,6 +16,7 @@ import java.util.List;
  * Web MVC 配置
  * - 注册登录拦截器（仅拦截 /api/**，排除 /api/auth/**）
  * - 注册 @CurrentUser 参数解析器
+ * - 《细节》图片从服务器目录读（不在 jar 内，加图无需重新部署）
  */
 @Configuration
 @RequiredArgsConstructor
@@ -22,6 +25,17 @@ public class WebMvcConfig implements WebMvcConfigurer {
     private final LoginInterceptor loginInterceptor;
     private final CurrentUserArgumentResolver currentUserArgumentResolver;
     private final ApiLogInterceptor apiLogInterceptor;
+    private final DetailProperties detailProperties;
+
+    /** 《细节》图片资源：/games/detail/** → file:{image-dir}/（URL 不变，从配置目录读取） */
+    @Override
+    public void addResourceHandlers(ResourceHandlerRegistry registry) {
+        String dir = detailProperties.getImageDir();
+        if (StringUtils.hasText(dir)) {
+            String location = "file:" + dir + (dir.endsWith("/") ? "" : "/");
+            registry.addResourceHandler("/games/detail/**").addResourceLocations(location);
+        }
+    }
 
     @Override
     public void addInterceptors(InterceptorRegistry registry) {

@@ -2,12 +2,14 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuth } from '@/stores/auth'
+import { useAdminAuth } from '@/stores/adminAuth'
 import fishLogo from '@/assets/svg/logo/fish-logo.svg'
 
 const router = useRouter()
 const route = useRoute()
 const scrolled = ref(false)
 const { user, isLoggedIn, logout } = useAuth()
+const { isAdmin } = useAdminAuth()
 
 const navItems = [
   { name: '首页', path: '/', key: 'home' },
@@ -49,6 +51,8 @@ onUnmounted(() => window.removeEventListener('scroll', handleScroll))
         >
           {{ item.name }}
         </router-link>
+        <!-- 管理入口：管理后台登录后显示 -->
+        <router-link v-if="isAdmin" to="/admin/game" class="nav-link">管理</router-link>
       </nav>
 
       <!-- Right -->

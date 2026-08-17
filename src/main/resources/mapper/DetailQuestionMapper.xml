@@ -21,4 +21,22 @@
         WHERE status = 1
         ORDER BY image_key
     </select>
+
+    <select id="countByImageKey" resultType="long">
+        SELECT COUNT(*) FROM detail_question WHERE image_key = #{imageKey}
+    </select>
+
+    <delete id="deleteByImageKey">
+        DELETE FROM detail_question WHERE image_key = #{imageKey}
+    </delete>
+
+    <insert id="insertBatch">
+        INSERT INTO detail_question
+          (`image_key`, `question_text`, `option_a`, `option_b`, `option_c`, `option_d`, `correct_option`, `difficulty`, `status`)
+        VALUES
+        <foreach collection="list" item="q" separator=",">
+            (#{q.imageKey}, #{q.questionText}, #{q.optionA}, #{q.optionB}, #{q.optionC}, #{q.optionD},
+             #{q.correctOption}, #{q.difficulty}, #{q.status})
+        </foreach>
+    </insert>
 </mapper>
