@@ -41,7 +41,8 @@ uapis:
 
 # 微信小程序配置（secret 用环境变量注入，不写死在版本库）
 wechat:
-  appid: wx13a237243a856ba4
+  #appid: wx13a237243a856ba4
+  appid: wxfd687fffa06aea50
   secret: ${WX_SECRET:}
 
 # 《细节》管理后台：图片存服务器目录（不在 jar 内，加图无需重新部署/发布）
