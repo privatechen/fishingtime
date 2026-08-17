@@ -18,13 +18,7 @@ interface AdminImage {
   questions: AdminQuestion[]
 }
 
-const { isAdmin, token, login, logout } = useAdminAuth()
-
-// ── 登录态 ──
-const username = ref('')
-const password = ref('')
-const loginError = ref('')
-const loginSubmitting = ref(false)
+const { isAdmin, checkAdmin } = useAdminAuth()
 
 // ── 列表 / 编辑状态 ──
 const view = ref<'list' | 'edit'>('list')
@@ -38,30 +32,11 @@ const file = ref<File | null>(null)
 const submitting = ref(false)
 const brokenImages = ref<Set<string>>(new Set())
 
-async function handleLogin() {
-  loginError.value = ''
-  if (!username.value.trim() || !password.value) {
-    loginError.value = '请输入账号和密码'
-    return
-  }
-  loginSubmitting.value = true
-  try {
-    const err = await login(username.value.trim(), password.value)
-    if (err) loginError.value = err
-    else await loadImages()
-  } finally {
-    loginSubmitting.value = false
-  }
-}
-
 async function loadImages() {
   loadingImages.value = true
   error.value = ''
   try {
-    const res = await fetch('/api/games/detail/admin/images', {
-      headers: { 'X-Admin-Token': token.value },
-      credentials: 'same-origin',
-    })
+    const res = await fetch('/api/games/detail/admin/images', { credentials: 'same-origin' })
     const json = await res.json()
     if (json.code === 200 && json.data) {
       images.value = json.data
@@ -140,7 +115,6 @@ async function save() {
   try {
     const res = await fetch('/api/games/detail/admin/upload', {
       method: 'POST',
-      headers: { 'X-Admin-Token': token.value },
       credentials: 'same-origin',
       body: form,
     })
@@ -162,7 +136,6 @@ async function removeImage(img: AdminImage) {
   try {
     const res = await fetch(`/api/games/detail/admin/images/${encodeURIComponent(img.imageKey)}`, {
       method: 'DELETE',
-      headers: { 'X-Admin-Token': token.value },
       credentials: 'same-origin',
     })
     const json = await res.json()
@@ -176,7 +149,8 @@ async function removeImage(img: AdminImage) {
   }
 }
 
-onMounted(() => {
+onMounted(async () => {
+  await checkAdmin()
   if (isAdmin.value) void loadImages()
 })
 </script>
@@ -184,16 +158,11 @@ onMounted(() => {
 <template>
   <Header />
   <div class="admin-page">
-    <!-- 未登录：登录框 -->
+    <!-- 无权限 -->
     <div v-if="!isAdmin" class="card login-card">
-      <h1 class="title">细节管理后台</h1>
-      <p class="subtitle">请使用管理员账号登录</p>
-      <input v-model="username" type="text" placeholder="账号" />
-      <input v-model="password" type="password" placeholder="密码" @keyup.enter="handleLogin" />
-      <p v-if="loginError" class="error">{{ loginError }}</p>
-      <button class="btn-primary" :disabled="loginSubmitting" @click="handleLogin">
-        {{ loginSubmitting ? '登录中...' : '登录' }}
-      </button>
+      <h1 class="title">无访问权限</h1>
+      <p class="subtitle">仅管理员账号（admin）可访问此页面。</p>
+      <router-link to="/login" class="btn-primary link-btn">去登录</router-link>
     </div>
 
     <!-- 已登录 -->
@@ -475,6 +444,12 @@ onMounted(() => {
 .btn-secondary:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+}
+.link-btn {
+  display: block;
+  text-align: center;
+  text-decoration: none;
+  margin-top: 12px;
 }
 .btn-add {
   padding: 10px 18px;

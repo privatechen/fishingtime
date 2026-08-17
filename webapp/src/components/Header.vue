@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuth } from '@/stores/auth'
 import { useAdminAuth } from '@/stores/adminAuth'
@@ -9,7 +9,7 @@ const router = useRouter()
 const route = useRoute()
 const scrolled = ref(false)
 const { user, isLoggedIn, logout } = useAuth()
-const { isAdmin } = useAdminAuth()
+const { isAdmin, checkAdmin } = useAdminAuth()
 
 const navItems = [
   { name: '首页', path: '/', key: 'home' },
@@ -27,7 +27,13 @@ async function handleLogout() {
   router.push('/')
 }
 
-onMounted(() => window.addEventListener('scroll', handleScroll))
+// 登录态变化时刷新「是否管理员」（管理入口按普通登录账号判断）
+watch(isLoggedIn, () => void checkAdmin())
+
+onMounted(() => {
+  window.addEventListener('scroll', handleScroll)
+  void checkAdmin()
+})
 onUnmounted(() => window.removeEventListener('scroll', handleScroll))
 </script>
 

@@ -1,42 +1,26 @@
 /**
- * 《细节》管理后台登录态（独立于普通用户登录）
- * token 存 localStorage（V1 不过期；后端重启后需重新登录）
+ * 《细节》管理身份判断
+ *
+ * 管理身份 = 当前登录用户用户名 == 配置的 admin-user（默认 admin），
+ * 由后端 /admin/status 返回；不依赖独立 admin 登录。
  */
 import { reactive, computed } from 'vue'
 
-const TOKEN_KEY = 'fishingtime:adminToken'
-
-const state = reactive<{ token: string }>({
-  token: typeof localStorage !== 'undefined' ? (localStorage.getItem(TOKEN_KEY) || '') : '',
-})
+const state = reactive<{ isAdmin: boolean }>({ isAdmin: false })
 
 export function useAdminAuth() {
-  const isAdmin = computed(() => !!state.token)
+  const isAdmin = computed(() => state.isAdmin)
 
-  async function login(username: string, password: string): Promise<string | null> {
+  /** 向后端确认当前用户是否管理员（登录态变化后调用） */
+  async function checkAdmin() {
     try {
-      const res = await fetch('/api/games/detail/admin/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'same-origin',
-        body: JSON.stringify({ username, password }),
-      })
+      const res = await fetch('/api/games/detail/admin/status', { credentials: 'same-origin' })
       const json = await res.json()
-      if (json.code === 200 && json.data?.token) {
-        state.token = json.data.token
-        localStorage.setItem(TOKEN_KEY, json.data.token)
-        return null
-      }
-      return json.message || '登录失败'
+      state.isAdmin = json.code === 200 && !!json.data?.isAdmin
     } catch {
-      return '网络异常，请稍后重试'
+      state.isAdmin = false
     }
   }
 
-  function logout() {
-    state.token = ''
-    localStorage.removeItem(TOKEN_KEY)
-  }
-
-  return { isAdmin, token: computed(() => state.token), login, logout }
+  return { isAdmin, checkAdmin }
 }

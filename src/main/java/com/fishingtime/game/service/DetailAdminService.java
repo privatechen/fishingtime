@@ -1,5 +1,6 @@
 package com.fishingtime.game.service;
 
+import com.fishingtime.auth.CurrentUserInfo;
 import com.fishingtime.common.dto.ErrorCode;
 import com.fishingtime.common.exception.BusinessException;
 import com.fishingtime.config.DetailProperties;
@@ -20,16 +21,14 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
-import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
  * 《细节》管理后台服务
  *
- * - 登录：校验配置里的 admin 凭据，返回内存 token（V1 不过期，服务重启后需重新登录）
+ * - 鉴权：管理身份 = 当前登录用户用户名等于配置的 admin-user（默认 admin），
+ *   不再用独立 admin token；管理操作走普通登录会话
  * - 上传：图片落 {image-dir}/{image_key}.jpg + 解析 30 行标准文本 → upsert detail_question
  * - image_key 由上传文件名推导：PicA.jpg → pic_a（兼容现有命名）；其他 → 小写文件名
  */
@@ -46,25 +45,17 @@ public class DetailAdminService {
     private final DetailProperties detailProperties;
     private final DetailQuestionMapper questionMapper;
 
-    /** 已签发的 admin token（内存，V1 不过期） */
-    private final Set<String> adminTokens = ConcurrentHashMap.newKeySet();
+    // ────────────── 鉴权 ──────────────
 
-    // ────────────── 登录 / 鉴权 ──────────────
-
-    public String login(String username, String password) {
-        if (detailProperties.getAdminUser().equals(username)
-                && detailProperties.getAdminPassword().equals(password)) {
-            String token = UUID.randomUUID().toString().replace("-", "");
-            adminTokens.add(token);
-            log.info("[细节] 管理后台登录成功");
-            return token;
-        }
-        throw new BusinessException(ErrorCode.LOGIN_FAILED, "管理员账号或密码错误");
+    /** 当前用户是否是管理员（用户名 == 配置的 admin-user） */
+    public boolean isAdmin(CurrentUserInfo user) {
+        return user != null && detailProperties.getAdminUser().equals(user.getUsername());
     }
 
-    public void requireToken(String token) {
-        if (token == null || !adminTokens.contains(token)) {
-            throw new BusinessException(ErrorCode.UNAUTHORIZED, "管理员未登录或登录已失效");
+    /** 校验当前用户是管理员，否则 401 */
+    public void requireAdmin(CurrentUserInfo user) {
+        if (!isAdmin(user)) {
+            throw new BusinessException(ErrorCode.UNAUTHORIZED, "无管理员权限");
         }
     }
 
