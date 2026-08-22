@@ -8,7 +8,7 @@ const loading = ref(true)
 
 onMounted(async () => {
   try {
-    clusters.value = await fetchCommonHot()
+    clusters.value = (await fetchCommonHot()).slice(0, 10)
   } catch (e) {
     console.warn('[共同热点] 加载失败', e)
     clusters.value = []
@@ -22,6 +22,7 @@ onMounted(async () => {
   <div class="card">
     <div class="sidebar-card-header">🌐 全网共同热点</div>
     <div class="sidebar-card-body common-hot-list">
+      <!-- 全部放进可滚动容器，超过约 4 条高度可下滑（前几条也在框内） -->
       <div
         v-for="cluster in clusters"
         :key="cluster.title"
@@ -51,6 +52,9 @@ onMounted(async () => {
 .common-hot-list {
   padding-top: 4px;
   padding-bottom: 4px;
+  /* 超过约 4 条高度时列表内滚动（前几条也在框内） */
+  max-height: 250px;
+  overflow-y: auto;
 }
 
 .common-hot-item + .common-hot-item {
