@@ -45,6 +45,10 @@ wechat:
   appid: wxfd687fffa06aea50
   secret: ${WX_SECRET:}
 
+# 快手热榜 API（普通 10 分钟刷新）
+kuaishou:
+  hotlist-api: https://api.tcslw.cn/api/hotlist/kuaishou
+
 # 《细节》管理后台：图片存服务器目录（不在 jar 内，加图无需重新部署/发布）
 app:
   detail:

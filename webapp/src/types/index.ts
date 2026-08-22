@@ -1,6 +1,6 @@
 /** 热榜条目 */
 export interface HotItem {
-  platform: 'weibo' | 'baidu' | 'zhihu' | 'hupu' | 'douyin' | 'toutiao'
+  platform: 'weibo' | 'baidu' | 'zhihu' | 'hupu' | 'douyin' | 'kuaishou' | 'toutiao'
   rank: number
   title: string
   hot?: string
@@ -41,6 +41,7 @@ export const PLATFORM_MAP: Record<string, { name: string; color: string }> = {
   baidu: { name: '百度热搜', color: '#2d8cf0' },
   zhihu: { name: '知乎热榜', color: '#1a7ae0' },
   douyin: { name: '抖音热榜', color: '#161823' },
+  kuaishou: { name: '快手热榜', color: '#ff4906' },
   toutiao: { name: '头条热榜', color: '#ff5c38' },
 }
 

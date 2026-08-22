@@ -1,17 +1,10 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { fetchCommonHot, type CommonHotCluster } from '@/api'
+import { PLATFORM_MAP } from '@/types'
 
 const clusters = ref<CommonHotCluster[]>([])
 const loading = ref(true)
-
-const platformName: Record<string, string> = {
-  weibo: '微博',
-  baidu: '百度',
-  zhihu: '知乎',
-  hupu: '虎扑',
-  toutiao: '头条',
-}
 
 onMounted(async () => {
   try {
@@ -41,7 +34,7 @@ onMounted(async () => {
             :key="`${entry.platform}-${entry.hotItem.rank}-${entry.hotItem.title}`"
             class="common-hot-rank"
           >
-            <span class="common-hot-rank-name">{{ platformName[entry.platform] || entry.platform }}</span>
+            <span class="common-hot-rank-name">{{ PLATFORM_MAP[entry.platform]?.name || entry.platform }}</span>
             <span class="common-hot-rank-value">#{{ entry.hotItem.rank ?? '-' }}</span>
           </div>
         </div>

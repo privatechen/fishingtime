@@ -113,6 +113,17 @@ export async function fetchDouyinHot(): Promise<HotApiResult> {
   }))
 }
 
+export async function fetchKuaishouHot(): Promise<HotApiResult> {
+  return fetchHotFromApi('kuaishou', (item: any, index: number) => ({
+    platform: 'kuaishou' as const,
+    rank: item.rank ?? (index + 1),
+    title: item.title ?? '',
+    hot: item.hotScore ?? '',
+    url: item.url ?? '',
+    normalizedHotScore: item.normalizedHotScore ?? 0,
+  }))
+}
+
 export async function fetchAllPlatforms(): Promise<Record<string, HotItem[]>> {
   await delay(300)
   return hotData

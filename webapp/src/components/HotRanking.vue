@@ -2,7 +2,7 @@
 import { ref, onMounted } from 'vue'
 import type { HotItem } from '@/types'
 import { PLATFORM_MAP } from '@/types'
-import { fetchHotList, fetchBaiduHot, fetchZhihuHot, fetchWeiboHot, fetchHupuHot, fetchToutiaoHot, fetchDouyinHot } from '@/api'
+import { fetchHotList, fetchBaiduHot, fetchZhihuHot, fetchWeiboHot, fetchHupuHot, fetchToutiaoHot, fetchDouyinHot, fetchKuaishouHot } from '@/api'
 import commentIcon from '@/assets/png/评论_100k.png'
 import viewIcon from '@/assets/png/阅读量_100k.png'
 
@@ -51,6 +51,8 @@ async function load(platform: string) {
       result = await fetchToutiaoHot()
     } else if (platform === 'douyin') {
       result = await fetchDouyinHot()
+    } else if (platform === 'kuaishou') {
+      result = await fetchKuaishouHot()
     } else {
       result = { data: await fetchHotList(platform) }
     }
