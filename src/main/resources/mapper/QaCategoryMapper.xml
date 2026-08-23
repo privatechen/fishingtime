@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.fishingtime.qa.mapper.QaCategoryMapper">
+
+    <select id="selectEnabled" resultType="com.fishingtime.qa.domain.QaCategory">
+        SELECT * FROM multi_qa_category
+        WHERE status = 1
+        ORDER BY sort_order, id
+    </select>
+
+    <select id="selectAll" resultType="com.fishingtime.qa.domain.QaCategory">
+        SELECT * FROM multi_qa_category ORDER BY sort_order, id
+    </select>
+
+    <select id="selectById" resultType="com.fishingtime.qa.domain.QaCategory">
+        SELECT * FROM multi_qa_category WHERE id = #{id}
+    </select>
+
+    <select id="selectByCode" resultType="com.fishingtime.qa.domain.QaCategory">
+        SELECT * FROM multi_qa_category WHERE code = #{code}
+    </select>
+
+    <insert id="insert" parameterType="com.fishingtime.qa.domain.QaCategory"
+            useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO multi_qa_category (code, name, icon, sort_order, status)
+        VALUES (#{code}, #{name}, #{icon}, #{sortOrder}, #{status})
+    </insert>
+
+    <update id="update" parameterType="com.fishingtime.qa.domain.QaCategory">
+        UPDATE multi_qa_category
+        SET code = #{code}, name = #{name}, icon = #{icon}, sort_order = #{sortOrder}, status = #{status}
+        WHERE id = #{id}
+    </update>
+
+    <delete id="deleteById">
+        DELETE FROM multi_qa_category WHERE id = #{id}
+    </delete>
+</mapper>

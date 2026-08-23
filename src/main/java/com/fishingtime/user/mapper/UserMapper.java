@@ -18,4 +18,7 @@ public interface UserMapper {
     User selectById(Long id);
 
     void updateProfile(User user);
+
+    /** 当前最大的游客序号（昵称「人民xxxxx」的数字部分，无则 0） */
+    Long selectMaxGuestNo();
 }

@@ -48,7 +48,7 @@ public class WxAuthService {
     @Value("${wechat.secret}")
     private String secret;
 
-    /** 微信登录：识别已有用户，首次返回 needUsername（不建用户，等前端设置用户名后走 register） */
+    /** 微信登录：识别已有用户；首次（新 openid）静默创建游客账号（昵称「人民xxxxx」递增），全程无弹窗 */
     public WxLoginResult login(String code) {
         if (code == null || code.isBlank()) {
             throw new BusinessException(ErrorCode.PARAM_INVALID, "缺少微信登录 code");
@@ -57,13 +57,32 @@ public class WxAuthService {
         String openid = code2Session(code);
         User user = userMapper.selectByOpenid(openid);
         if (user == null) {
-            log.info("[微信] 首次识别 openid 前缀={}，等待设置用户名", maskOpenid(openid));
-            return new WxLoginResult(true, null, null);
+            user = createGuestUser(openid);
         }
 
         CurrentUserInfo info = new CurrentUserInfo(user.getId(), user.getUsername(), user.getNickname());
         String token = tokenService.createToken(info);
         return new WxLoginResult(false, token, toDTO(user));
+    }
+
+    /** 静默创建游客账号：用户名 wx+openid（唯一），昵称「人民00001」按序号递增；免密登录（认证靠 OpenID） */
+    private User createGuestUser(String openid) {
+        String username = "wx" + openid;
+        if (username.length() > 32) {
+            username = username.substring(0, 32);
+        }
+        long guestNo = userMapper.selectMaxGuestNo() + 1;
+        String nickname = "人民" + String.format("%05d", guestNo);
+
+        User user = new User();
+        user.setUsername(username);
+        user.setNickname(nickname);
+        user.setOpenid(openid);
+        user.setStatus(1);
+        user.setPassword("");
+        userMapper.insertUser(user);
+        log.info("[微信] 静默创建游客用户 userId={}, nickname={}", user.getId(), nickname);
+        return user;
     }
 
     /** 微信注册：首次设置用户名建立用户（免密，昵称与用户名保持一致） */

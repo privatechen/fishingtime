@@ -3,6 +3,9 @@ import { ref, onMounted } from 'vue'
 import Header from '@/components/Header.vue'
 import Footer from '@/components/Footer.vue'
 import { useAdminAuth } from '@/stores/adminAuth'
+import AdminQaManage from './AdminQaManage.vue'
+
+const tab = ref<'detail' | 'qa'>('detail')
 
 interface AdminQuestion {
   questionText: string
@@ -167,8 +170,17 @@ onMounted(async () => {
 
     <!-- 已登录 -->
     <template v-else>
-      <!-- ── 列表视图 ── -->
-      <div v-if="view === 'list'" class="card list-card">
+      <!-- 管理 Tab：细节 / 瞅瞅 -->
+      <div class="admin-tabs">
+        <button :class="{ active: tab === 'detail' }" @click="tab = 'detail'">细节</button>
+        <button :class="{ active: tab === 'qa' }" @click="tab = 'qa'">瞅瞅</button>
+      </div>
+
+      <!-- 瞅瞅管理 -->
+      <AdminQaManage v-if="tab === 'qa'" />
+
+      <!-- ── 细节管理：列表视图 ── -->
+      <div v-if="tab === 'detail' && view === 'list'" class="card list-card">
         <div class="list-head">
           <div>
             <h1 class="title">细节图片管理</h1>
@@ -198,7 +210,7 @@ onMounted(async () => {
       </div>
 
       <!-- ── 编辑视图 ── -->
-      <div v-else class="card edit-card">
+      <div v-else-if="tab === 'detail'" class="card edit-card">
         <div class="list-head">
           <div>
             <h1 class="title">{{ editingKey ? `编辑：${editingKey}` : '新增图片' }}</h1>
@@ -253,6 +265,25 @@ onMounted(async () => {
   font-size: 26px;
   font-weight: 700;
   margin-bottom: 8px;
+}
+.admin-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.admin-tabs button {
+  padding: 9px 22px;
+  border: 1px solid var(--color-border);
+  border-radius: 16px;
+  background: var(--color-card);
+  color: var(--color-text-secondary);
+  font-size: 15px;
+  cursor: pointer;
+}
+.admin-tabs button.active {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+  font-weight: 600;
 }
 .subtitle {
   color: var(--color-text-secondary);

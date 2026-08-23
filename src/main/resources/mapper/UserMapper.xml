@@ -37,6 +37,13 @@
         WHERE openid = #{openid}
     </select>
 
+    <!-- 游客序号：昵称「人民xxxxx」里最大数字，无则 0 -->
+    <select id="selectMaxGuestNo" resultType="java.lang.Long">
+        SELECT IFNULL(MAX(CAST(SUBSTRING(nickname, 3) AS UNSIGNED)), 0)
+        FROM user
+        WHERE nickname LIKE '人民%'
+    </select>
+
     <select id="selectById" resultMap="userResultMap">
         SELECT <include refid="baseColumns"/>
         FROM user

@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.fishingtime.qa.mapper.QaQuestionMapper">
+
+    <sql id="unansweredFilter">
+        AND NOT EXISTS (
+            SELECT 1 FROM multi_qa_user_answer ua
+            WHERE ua.question_id = q.id AND ua.user_id = #{userId}
+        )
+    </sql>
+
+    <select id="selectById" resultType="com.fishingtime.qa.domain.QaQuestion">
+        SELECT * FROM multi_qa_question WHERE id = #{id}
+    </select>
+
+    <!-- 分类下下一道未答题（排序靠前优先） -->
+    <select id="selectNextInCategory" resultType="com.fishingtime.qa.domain.QaQuestion">
+        SELECT * FROM multi_qa_question q
+        WHERE q.category_id = #{categoryId}
+          AND q.status = 1
+        <include refid="unansweredFilter"/>
+        ORDER BY q.sort_order ASC, q.id ASC
+        LIMIT 1
+    </select>
+
+    <!-- 推荐：全库未答题，recommend_score + 随机扰动 -->
+    <select id="selectNextRecommend" resultType="com.fishingtime.qa.domain.QaQuestion">
+        SELECT * FROM multi_qa_question q
+        WHERE q.status = 1
+        <include refid="unansweredFilter"/>
+        ORDER BY (q.recommend_score + RAND() * 0.3) DESC
+        LIMIT 1
+    </select>
+
+    <!-- 管理后台列表：categoryId 为空则全部 -->
+    <select id="selectForAdmin" resultType="com.fishingtime.qa.domain.QaQuestion">
+        SELECT * FROM multi_qa_question
+        <where>
+            <if test="categoryId != null">AND category_id = #{categoryId}</if>
+        </where>
+        ORDER BY category_id, sort_order, id
+    </select>
+
+    <insert id="insert" parameterType="com.fishingtime.qa.domain.QaQuestion"
+            useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO multi_qa_question
+          (category_id, content, description, status, recommend_score, sort_order, published_at)
+        VALUES
+          (#{categoryId}, #{content}, #{description}, #{status}, #{recommendScore}, #{sortOrder}, #{publishedAt})
+    </insert>
+
+    <update id="update" parameterType="com.fishingtime.qa.domain.QaQuestion">
+        UPDATE multi_qa_question
+        SET category_id = #{categoryId}, content = #{content}, description = #{description},
+            recommend_score = #{recommendScore}, sort_order = #{sortOrder}
+        WHERE id = #{id}
+    </update>
+
+    <update id="updateStatus">
+        UPDATE multi_qa_question SET status = #{status} WHERE id = #{id}
+    </update>
+
+    <delete id="deleteById">
+        DELETE FROM multi_qa_question WHERE id = #{id}
+    </delete>
+
+    <update id="incrementAnswerCount">
+        UPDATE multi_qa_question SET answer_count = answer_count + 1 WHERE id = #{id}
+    </update>
+
+    <update id="incrementViewCount">
+        UPDATE multi_qa_question SET view_count = view_count + 1 WHERE id = #{id}
+    </update>
+
+    <select id="countByCategory" resultType="long">
+        SELECT COUNT(*) FROM multi_qa_question WHERE category_id = #{categoryId}
+    </select>
+</mapper>

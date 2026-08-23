@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.fishingtime.qa.mapper.QaQuestionOptionMapper">
+
+    <select id="selectByQuestionId" resultType="com.fishingtime.qa.domain.QaQuestionOption">
+        SELECT * FROM multi_qa_question_option
+        WHERE question_id = #{questionId}
+        ORDER BY sort_order, id
+    </select>
+
+    <insert id="insertBatch">
+        INSERT INTO multi_qa_question_option (question_id, content, icon, sort_order, vote_count)
+        VALUES
+        <foreach collection="list" item="o" separator=",">
+            (#{o.questionId}, #{o.content}, #{o.icon}, #{o.sortOrder}, #{o.voteCount})
+        </foreach>
+    </insert>
+
+    <update id="update" parameterType="com.fishingtime.qa.domain.QaQuestionOption">
+        UPDATE multi_qa_question_option
+        SET content = #{content}, icon = #{icon}, sort_order = #{sortOrder}
+        WHERE id = #{id}
+    </update>
+
+    <delete id="deleteByQuestionId">
+        DELETE FROM multi_qa_question_option WHERE question_id = #{questionId}
+    </delete>
+
+    <!-- 投票 +1：仅当 option 属于该 question（防越权） -->
+    <update id="incrementVoteCount">
+        UPDATE multi_qa_question_option
+        SET vote_count = vote_count + 1
+        WHERE id = #{id} AND question_id = #{questionId}
+    </update>
+</mapper>
