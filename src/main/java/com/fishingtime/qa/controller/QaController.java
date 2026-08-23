@@ -10,7 +10,9 @@ import com.fishingtime.qa.dto.QaCategoryVO;
 import com.fishingtime.qa.dto.QaNextResponse;
 import com.fishingtime.qa.dto.QaProfileStatsVO;
 import com.fishingtime.qa.dto.QaQuestionVO;
+import com.fishingtime.qa.dto.QaSubmitRequest;
 import com.fishingtime.qa.service.QaService;
+import com.fishingtime.qa.service.QaSubmitService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
@@ -33,6 +35,7 @@ import java.util.List;
 public class QaController {
 
     private final QaService qaService;
+    private final QaSubmitService qaSubmitService;
 
     @GetMapping("/categories")
     public ApiResponse<List<QaCategoryVO>> categories() {
@@ -63,6 +66,16 @@ public class QaController {
     @GetMapping("/profile/stats")
     public ApiResponse<QaProfileStatsVO> profileStats(@CurrentUser CurrentUserInfo user) {
         return ApiResponse.success(qaService.profileStats(user.getUserId()));
+    }
+
+    @PostMapping("/submit")
+    public ApiResponse<Void> submit(@CurrentUser CurrentUserInfo user,
+                                    @RequestBody QaSubmitRequest request) {
+        if (request == null) {
+            return ApiResponse.error(ErrorCode.PARAM_INVALID);
+        }
+        qaSubmitService.submit(user.getUserId(), request);
+        return ApiResponse.success();
     }
 
     @GetMapping("/answers")

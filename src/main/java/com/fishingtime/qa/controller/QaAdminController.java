@@ -8,7 +8,10 @@ import com.fishingtime.qa.dto.QaCategoryAdminVO;
 import com.fishingtime.qa.dto.QaCategorySaveRequest;
 import com.fishingtime.qa.dto.QaQuestionAdminVO;
 import com.fishingtime.qa.dto.QaQuestionSaveRequest;
+import com.fishingtime.qa.dto.QaSubmitAdminVO;
+import com.fishingtime.qa.dto.QaSubmitReviewRequest;
 import com.fishingtime.qa.service.QaAdminService;
+import com.fishingtime.qa.service.QaSubmitService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
@@ -35,6 +38,7 @@ import java.util.List;
 public class QaAdminController {
 
     private final QaAdminService qaAdminService;
+    private final QaSubmitService qaSubmitService;
     private final DetailAdminService detailAdminService;
 
     private void requireAdmin(CurrentUserInfo user) {
@@ -110,6 +114,31 @@ public class QaAdminController {
                                        @RequestParam Integer status) {
         requireAdmin(user);
         qaAdminService.setQuestionStatus(id, status);
+        return ApiResponse.success();
+    }
+
+    // ────────────── 投稿审核 ──────────────
+
+    @GetMapping("/submissions")
+    public ApiResponse<List<QaSubmitAdminVO>> listSubmissions(@CurrentUser CurrentUserInfo user,
+                                                              @RequestParam(required = false) Integer status) {
+        requireAdmin(user);
+        return ApiResponse.success(qaSubmitService.list(status));
+    }
+
+    @PostMapping("/submissions/{id}/approve")
+    public ApiResponse<Void> approve(@CurrentUser CurrentUserInfo user, @PathVariable Long id) {
+        requireAdmin(user);
+        qaSubmitService.approve(id);
+        return ApiResponse.success();
+    }
+
+    @PostMapping("/submissions/{id}/reject")
+    public ApiResponse<Void> reject(@CurrentUser CurrentUserInfo user,
+                                    @PathVariable Long id,
+                                    @RequestBody(required = false) QaSubmitReviewRequest request) {
+        requireAdmin(user);
+        qaSubmitService.reject(id, request != null ? request.getReason() : null);
         return ApiResponse.success();
     }
 }
