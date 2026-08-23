@@ -14,6 +14,7 @@ import com.fishingtime.qa.mapper.QaQuestionMapper;
 import com.fishingtime.qa.mapper.QaQuestionOptionMapper;
 import com.fishingtime.qa.mapper.QaUserAnswerMapper;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -73,6 +74,26 @@ public class QaSubmitService {
         }
         if (!options.isEmpty()) {
             optionMapper.insertBatch(options);
+        }
+
+        // 可选：用户出题时直接选了自己的答案 → 记录（进 qa_user_answer + 计票）
+        if (req.getAnswerIndex() != null && req.getAnswerIndex() >= 0) {
+            List<QaQuestionOption> inserted = optionMapper.selectByQuestionId(q.getId());
+            int idx = req.getAnswerIndex();
+            if (idx < inserted.size()) {
+                QaQuestionOption chosen = inserted.get(idx);
+                QaUserAnswer ans = new QaUserAnswer();
+                ans.setUserId(userId);
+                ans.setQuestionId(q.getId());
+                ans.setOptionId(chosen.getId());
+                try {
+                    answerMapper.insert(ans);
+                } catch (DuplicateKeyException e) {
+                    // 已答过（理论上不可能，刚建题）；忽略
+                }
+                optionMapper.incrementVoteCount(chosen.getId(), q.getId());
+                questionMapper.incrementAnswerCount(q.getId());
+            }
         }
     }
 

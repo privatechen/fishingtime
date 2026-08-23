@@ -14,6 +14,8 @@ public class QaSubmitRequest {
     private String content;
     private String description;
     private List<QaSubmitOption> options;
+    /** 我选的答案（选项下标，可选；选中则投稿时记录我的回答） */
+    private Integer answerIndex;
 
     @Data
     public static class QaSubmitOption {
