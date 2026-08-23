@@ -14,6 +14,17 @@
         ORDER BY created_at DESC
     </select>
 
+    <select id="selectByUserPage" resultType="com.fishingtime.qa.domain.QaUserAnswer">
+        SELECT * FROM multi_qa_user_answer
+        WHERE user_id = #{userId}
+        ORDER BY created_at DESC, id DESC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <select id="countByUser" resultType="long">
+        SELECT COUNT(*) FROM multi_qa_user_answer WHERE user_id = #{userId}
+    </select>
+
     <insert id="insert" parameterType="com.fishingtime.qa.domain.QaUserAnswer">
         INSERT INTO multi_qa_user_answer (user_id, question_id, option_id)
         VALUES (#{userId}, #{questionId}, #{optionId})

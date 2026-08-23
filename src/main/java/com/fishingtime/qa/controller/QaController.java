@@ -4,10 +4,11 @@ import com.fishingtime.auth.CurrentUser;
 import com.fishingtime.auth.CurrentUserInfo;
 import com.fishingtime.common.dto.ApiResponse;
 import com.fishingtime.common.dto.ErrorCode;
+import com.fishingtime.qa.dto.QaAnswerPage;
 import com.fishingtime.qa.dto.QaAnswerRequest;
 import com.fishingtime.qa.dto.QaCategoryVO;
-import com.fishingtime.qa.dto.QaHistoryItem;
 import com.fishingtime.qa.dto.QaNextResponse;
+import com.fishingtime.qa.dto.QaProfileStatsVO;
 import com.fishingtime.qa.dto.QaQuestionVO;
 import com.fishingtime.qa.service.QaService;
 import lombok.RequiredArgsConstructor;
@@ -59,8 +60,15 @@ public class QaController {
         return ApiResponse.success(qaService.answer(user.getUserId(), id, request.getOptionId()));
     }
 
+    @GetMapping("/profile/stats")
+    public ApiResponse<QaProfileStatsVO> profileStats(@CurrentUser CurrentUserInfo user) {
+        return ApiResponse.success(qaService.profileStats(user.getUserId()));
+    }
+
     @GetMapping("/answers")
-    public ApiResponse<List<QaHistoryItem>> answers(@CurrentUser CurrentUserInfo user) {
-        return ApiResponse.success(qaService.history(user.getUserId()));
+    public ApiResponse<QaAnswerPage> answers(@CurrentUser CurrentUserInfo user,
+                                             @RequestParam(defaultValue = "1") int page,
+                                             @RequestParam(defaultValue = "20") int pageSize) {
+        return ApiResponse.success(qaService.history(user.getUserId(), page, pageSize));
     }
 }

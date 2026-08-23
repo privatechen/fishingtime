@@ -6,9 +6,11 @@ import com.fishingtime.qa.domain.QaCategory;
 import com.fishingtime.qa.domain.QaQuestion;
 import com.fishingtime.qa.domain.QaQuestionOption;
 import com.fishingtime.qa.domain.QaUserAnswer;
+import com.fishingtime.qa.dto.QaAnswerPage;
 import com.fishingtime.qa.dto.QaCategoryVO;
 import com.fishingtime.qa.dto.QaHistoryItem;
 import com.fishingtime.qa.dto.QaNextResponse;
+import com.fishingtime.qa.dto.QaProfileStatsVO;
 import com.fishingtime.qa.dto.QaOptionVO;
 import com.fishingtime.qa.dto.QaQuestionVO;
 import com.fishingtime.qa.mapper.QaCategoryMapper;
@@ -115,26 +117,84 @@ public class QaService {
         return buildQuestionVO(userId, q, true);
     }
 
-    public List<QaHistoryItem> history(Long userId) {
-        List<QaUserAnswer> answers = answerMapper.selectByUser(userId);
-        List<QaHistoryItem> list = new ArrayList<>(answers.size());
+    /** 我的回答历史（分页，最近优先；含当前同选择比例与是否多数派） */
+    public QaAnswerPage history(Long userId, int page, int pageSize) {
+        int safePage = Math.max(page, 1);
+        int safeSize = Math.min(Math.max(pageSize, 1), 50);
+        int offset = (safePage - 1) * safeSize;
+        List<QaUserAnswer> answers = answerMapper.selectByUserPage(userId, offset, safeSize);
+        long total = answerMapper.countByUser(userId);
+
+        List<QaHistoryItem> items = new ArrayList<>(answers.size());
         for (QaUserAnswer a : answers) {
+            QaHistoryItem item = new QaHistoryItem();
+            item.setQuestionId(a.getQuestionId());
+            item.setOptionId(a.getOptionId());
+            item.setAnsweredAt(a.getCreatedAt());
+
             QaQuestion q = questionMapper.selectById(a.getQuestionId());
-            if (q == null) {
+            List<QaQuestionOption> options = optionMapper.selectByQuestionId(a.getQuestionId());
+            if (q == null || options.isEmpty()) {
+                // 题目已下线：历史保留，展示占位，不再可投票
+                item.setQuestion(q != null ? q.getContent() : "（题目已下线）");
+                item.setMyAnswer("");
+                item.setSameRate(null);
+                item.setMajority(false);
+                items.add(item);
                 continue;
             }
-            QaHistoryItem item = new QaHistoryItem();
-            item.setQuestionId(q.getId());
-            item.setContent(q.getContent());
-            item.setOptionId(a.getOptionId());
-            optionMapper.selectByQuestionId(a.getQuestionId()).stream()
+            QaQuestionOption mine = options.stream()
                     .filter(o -> o.getId().equals(a.getOptionId()))
                     .findFirst()
-                    .ifPresent(o -> item.setOptionContent(o.getContent()));
-            item.setAnsweredAt(a.getCreatedAt());
-            list.add(item);
+                    .orElse(null);
+            int totalAnswers = q.getAnswerCount() != null ? q.getAnswerCount() : 0;
+            int myVotes = mine != null && mine.getVoteCount() != null ? mine.getVoteCount() : 0;
+            int maxVote = options.stream()
+                    .mapToInt(o -> o.getVoteCount() == null ? 0 : o.getVoteCount())
+                    .max().orElse(0);
+
+            item.setQuestion(q.getContent());
+            item.setMyAnswer(mine != null ? mine.getContent() : "");
+            item.setSameRate(totalAnswers > 0 ? Math.round(myVotes * 100.0f / totalAnswers) : 0);
+            item.setMajority(maxVote > 0 && myVotes == maxVote);
+            items.add(item);
         }
-        return list;
+        return new QaAnswerPage(items, total, safePage, safeSize);
+    }
+
+    /** 我的瞅瞅统计：回答数 + 大众派题数/比例/称号（并列任选其一即算多数派；动态计算） */
+    public QaProfileStatsVO profileStats(Long userId) {
+        List<QaUserAnswer> answers = answerMapper.selectByUser(userId);
+        int answerCount = answers.size();
+        if (answerCount == 0) {
+            return new QaProfileStatsVO(0, 0, 0, null);
+        }
+        int majority = 0;
+        for (QaUserAnswer a : answers) {
+            List<QaQuestionOption> options = optionMapper.selectByQuestionId(a.getQuestionId());
+            if (options.isEmpty()) {
+                continue; // 已下线题无法判定，不计入多数派
+            }
+            int maxVote = options.stream()
+                    .mapToInt(o -> o.getVoteCount() == null ? 0 : o.getVoteCount())
+                    .max().orElse(0);
+            boolean isMajority = options.stream()
+                    .filter(o -> o.getVoteCount() != null && o.getVoteCount() == maxVote)
+                    .anyMatch(o -> o.getId().equals(a.getOptionId()));
+            if (isMajority) {
+                majority++;
+            }
+        }
+        int rate = Math.round(majority * 100.0f / answerCount);
+        return new QaProfileStatsVO(answerCount, majority, rate, titleFor(rate));
+    }
+
+    private String titleFor(int rate) {
+        if (rate >= 80) return "随大流选手";
+        if (rate >= 65) return "大众派";
+        if (rate >= 45) return "有点自己的想法";
+        if (rate >= 30) return "少数派";
+        return "你确实不太一样";
     }
 
     private QaQuestionVO buildQuestionVO(Long userId, QaQuestion q, boolean showStats) {
