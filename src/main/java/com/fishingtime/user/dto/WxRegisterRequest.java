@@ -13,4 +13,7 @@ public class WxRegisterRequest {
 
     /** 用户名（唯一，昵称与之保持一致） */
     private String username;
+
+    /** 来源小程序 appid（后端按此选对应 secret） */
+    private String appId;
 }

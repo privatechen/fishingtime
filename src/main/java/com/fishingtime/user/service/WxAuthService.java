@@ -4,6 +4,7 @@ import com.fishingtime.auth.CurrentUserInfo;
 import com.fishingtime.auth.TokenService;
 import com.fishingtime.common.dto.ErrorCode;
 import com.fishingtime.common.exception.BusinessException;
+import com.fishingtime.config.WechatProperties;
 import com.fishingtime.user.domain.User;
 import com.fishingtime.user.dto.UserDTO;
 import com.fishingtime.user.dto.WxLoginResult;
@@ -12,7 +13,6 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.net.URI;
@@ -25,8 +25,9 @@ import java.time.Duration;
  * 微信小程序登录/注册服务
  *
  * 微信用户免密：认证完全依赖 OpenID（wx.login code → code2session）。
- * - login：识别已有用户，返回 token；首次（无用户）返回 needUsername，不建用户
- * - register：首次设置用户名建立用户（nickname = username，密码为空串不可用密码登录）
+ * 支持多个小程序共用一套后端：客户端上报 appId，code2session 用对应 appid 的 secret。
+ * - login：识别已有用户；首次（新 openid）静默创建游客账号（昵称「人民xxxxx」递增）
+ * - register：设置用户名建立用户（免密，昵称=用户名）
  */
 @Slf4j
 @Service
@@ -36,25 +37,19 @@ public class WxAuthService {
     private final UserMapper userMapper;
     private final TokenService tokenService;
     private final ObjectMapper objectMapper;
+    private final WechatProperties wechatProperties;
 
     private final HttpClient httpClient = HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(5))
             .build();
 
-    @Value("${wechat.appid}")
-    private String appid;
-
-    /** appsecret 通过环境变量注入（不写死在代码/版本库） */
-    @Value("${wechat.secret}")
-    private String secret;
-
     /** 微信登录：识别已有用户；首次（新 openid）静默创建游客账号（昵称「人民xxxxx」递增），全程无弹窗 */
-    public WxLoginResult login(String code) {
+    public WxLoginResult login(String code, String appId) {
         if (code == null || code.isBlank()) {
             throw new BusinessException(ErrorCode.PARAM_INVALID, "缺少微信登录 code");
         }
 
-        String openid = code2Session(code);
+        String openid = code2Session(code, appId);
         User user = userMapper.selectByOpenid(openid);
         if (user == null) {
             user = createGuestUser(openid);
@@ -86,7 +81,7 @@ public class WxAuthService {
     }
 
     /** 微信注册：首次设置用户名建立用户（免密，昵称与用户名保持一致） */
-    public WxLoginResult register(String username, String code) {
+    public WxLoginResult register(String username, String code, String appId) {
         if (username == null || username.trim().length() < 3 || username.trim().length() > 32) {
             throw new BusinessException(ErrorCode.PARAM_INVALID, "用户名长度 3~32 个字符");
         }
@@ -95,7 +90,7 @@ public class WxAuthService {
             throw new BusinessException(ErrorCode.USERNAME_EXISTS);
         }
 
-        String openid = code2Session(code);
+        String openid = code2Session(code, appId);
         User user = userMapper.selectByOpenid(openid);
         if (user != null) {
             // 并发/重复注册：直接返回已有用户
@@ -117,10 +112,17 @@ public class WxAuthService {
     }
 
     /** 调微信 code2session 换取 OpenID */
-    private String code2Session(String code) {
+    private String code2Session(String code, String appId) {
+        if (appId == null || appId.isBlank()) {
+            throw new BusinessException(ErrorCode.PARAM_INVALID, "缺少 appId");
+        }
+        String appSecret = wechatProperties.secretFor(appId);
+        if (appSecret == null || appSecret.isEmpty()) {
+            throw new BusinessException(ErrorCode.PARAM_INVALID, "未配置该小程序的 secret");
+        }
         String url = "https://api.weixin.qq.com/sns/jscode2session"
-                + "?appid=" + appid
-                + "&secret=" + secret
+                + "?appid=" + appId
+                + "&secret=" + appSecret
                 + "&js_code=" + code
                 + "&grant_type=authorization_code";
         try {

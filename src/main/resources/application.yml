@@ -39,11 +39,13 @@ uapis:
   key: uapi-ie_x95n1o7HfwiTJcN1IWf0RNNC1Jkvn-7XEbhxm
   hotboard-api: https://uapis.cn/api/v1/misc/hotboard
 
-# 微信小程序配置（secret 用环境变量注入，不写死在版本库）
+# 微信小程序配置：多小程序共用一套后端，客户端上报 appId，按 appid 选对应 secret（环境变量注入）
 wechat:
-  #appid: wx13a237243a856ba4
-  appid: wxfd687fffa06aea50
-  secret: ${WX_SECRET:}
+  apps:
+    - appid: wxfd687fffa06aea50
+      secret: ${WX_SECRET_1:}
+    - appid: wx13a237243a856ba4
+      secret: ${WX_SECRET_2:}
 
 # 快手热榜 API（普通 10 分钟刷新）
 kuaishou:

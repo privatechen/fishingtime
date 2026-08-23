@@ -25,11 +25,17 @@ public class WxAuthController {
 
     @PostMapping("/wx-login")
     public ApiResponse<WxLoginResult> wxLogin(@RequestBody WxLoginRequest request) {
-        return ApiResponse.success(wxAuthService.login(request.getCode()));
+        if (request == null) {
+            return ApiResponse.error(com.fishingtime.common.dto.ErrorCode.PARAM_INVALID);
+        }
+        return ApiResponse.success(wxAuthService.login(request.getCode(), request.getAppId()));
     }
 
     @PostMapping("/wx-register")
     public ApiResponse<WxLoginResult> wxRegister(@RequestBody WxRegisterRequest request) {
-        return ApiResponse.success(wxAuthService.register(request.getUsername(), request.getCode()));
+        if (request == null) {
+            return ApiResponse.error(com.fishingtime.common.dto.ErrorCode.PARAM_INVALID);
+        }
+        return ApiResponse.success(wxAuthService.register(request.getUsername(), request.getCode(), request.getAppId()));
     }
 }
