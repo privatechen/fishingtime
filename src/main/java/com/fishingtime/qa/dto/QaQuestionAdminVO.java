@@ -17,6 +17,12 @@ public class QaQuestionAdminVO {
     private String content;
     private String description;
     private Integer status;
+    /** 投稿用户 id（空=平台维护） */
+    private Long creatorId;
+    /** 投稿人昵称 */
+    private String creatorName;
+    /** 驳回原因 */
+    private String rejectReason;
     private Integer answerCount;
     private BigDecimal recommendScore;
     private Integer sortOrder;

@@ -13,6 +13,8 @@ import com.fishingtime.qa.dto.QaQuestionSaveRequest;
 import com.fishingtime.qa.mapper.QaCategoryMapper;
 import com.fishingtime.qa.mapper.QaQuestionMapper;
 import com.fishingtime.qa.mapper.QaQuestionOptionMapper;
+import com.fishingtime.user.domain.User;
+import com.fishingtime.user.mapper.UserMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -32,6 +34,7 @@ public class QaAdminService {
     private final QaCategoryMapper categoryMapper;
     private final QaQuestionMapper questionMapper;
     private final QaQuestionOptionMapper optionMapper;
+    private final UserMapper userMapper;
 
     // ────────────── 分类 ──────────────
 
@@ -83,13 +86,23 @@ public class QaAdminService {
 
     // ────────────── 题目 ──────────────
 
-    public List<QaQuestionAdminVO> listQuestions(Long categoryId) {
-        List<QaQuestion> qs = questionMapper.selectForAdmin(categoryId);
+    public List<QaQuestionAdminVO> listQuestions(Long categoryId, Integer status) {
+        List<QaQuestion> qs = questionMapper.selectForAdmin(categoryId, status);
         List<QaQuestionAdminVO> list = new ArrayList<>(qs.size());
         for (QaQuestion q : qs) {
             list.add(toAdminVO(q));
         }
         return list;
+    }
+
+    /** 审核通过：投稿题上线 */
+    public void approve(Long id) {
+        questionMapper.updateStatus(id, 1);
+    }
+
+    /** 审核驳回：置 2 + 原因 */
+    public void reject(Long id, String reason) {
+        questionMapper.updateReject(id, reason);
     }
 
     /** 新增/编辑题目：选项整图替换（已投票的题编辑选项会重置票数，V1 可接受） */
@@ -163,6 +176,12 @@ public class QaAdminService {
         vo.setContent(q.getContent());
         vo.setDescription(q.getDescription());
         vo.setStatus(q.getStatus());
+        vo.setCreatorId(q.getCreatorId());
+        if (q.getCreatorId() != null) {
+            User u = userMapper.selectById(q.getCreatorId());
+            vo.setCreatorName(u != null ? u.getNickname() : null);
+        }
+        vo.setRejectReason(q.getRejectReason());
         vo.setAnswerCount(q.getAnswerCount());
         vo.setRecommendScore(q.getRecommendScore());
         vo.setSortOrder(q.getSortOrder());

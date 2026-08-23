@@ -7,6 +7,7 @@ import com.fishingtime.common.dto.ErrorCode;
 import com.fishingtime.qa.dto.QaAnswerPage;
 import com.fishingtime.qa.dto.QaAnswerRequest;
 import com.fishingtime.qa.dto.QaCategoryVO;
+import com.fishingtime.qa.dto.QaMySubmitVO;
 import com.fishingtime.qa.dto.QaNextResponse;
 import com.fishingtime.qa.dto.QaProfileStatsVO;
 import com.fishingtime.qa.dto.QaQuestionVO;
@@ -76,6 +77,12 @@ public class QaController {
         }
         qaSubmitService.submit(user.getUserId(), request);
         return ApiResponse.success();
+    }
+
+    /** 我的投稿（含状态/驳回原因，可查看并回答自己的待审题） */
+    @GetMapping("/questions/mine")
+    public ApiResponse<List<QaMySubmitVO>> mine(@CurrentUser CurrentUserInfo user) {
+        return ApiResponse.success(qaSubmitService.mine(user.getUserId()));
     }
 
     @GetMapping("/answers")

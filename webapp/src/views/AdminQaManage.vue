@@ -24,6 +24,9 @@ interface Question {
   content: string
   description: string
   status: number
+  creatorId?: number
+  creatorName?: string
+  rejectReason?: string
   answerCount: number
   recommendScore: number
   sortOrder: number
@@ -32,6 +35,8 @@ interface Question {
 
 const categories = ref<Category[]>([])
 const questions = ref<Question[]>([])
+/** 待审投稿 */
+const submissions = ref<Question[]>([])
 const loading = ref(false)
 const error = ref('')
 const activeCategoryId = ref<number | null>(null)
@@ -86,7 +91,40 @@ async function loadQuestions() {
 }
 
 watch(activeCategoryId, () => void loadQuestions())
-onMounted(() => void loadCategories())
+onMounted(() => {
+  void loadCategories()
+  void loadSubmissions()
+})
+
+// ── 投稿审核 ──
+async function loadSubmissions() {
+  try {
+    submissions.value = await api('/questions?status=0')
+  } catch (e) {
+    error.value = (e as Error).message
+  }
+}
+
+async function approveSubmission(q: Question) {
+  if (!window.confirm(`通过投稿「${q.content.slice(0, 20)}」？`)) return
+  try {
+    await api(`/questions/${q.id}/approve`, 'POST')
+    await loadSubmissions()
+  } catch (e) {
+    error.value = (e as Error).message
+  }
+}
+
+async function rejectSubmission(q: Question) {
+  const reason = window.prompt(`驳回投稿「${q.content.slice(0, 20)}」的原因：`, '')
+  if (reason === null) return
+  try {
+    await api(`/questions/${q.id}/reject`, 'POST', { reason })
+    await loadSubmissions()
+  } catch (e) {
+    error.value = (e as Error).message
+  }
+}
 
 // ── 分类 ──
 function openCatForm(c?: Category) {
@@ -187,6 +225,31 @@ async function toggleStatus(q: Question) {
   <div class="qa-manage">
     <p v-if="error" class="error">{{ error }}</p>
     <p v-if="loading" class="hint">加载中...</p>
+
+    <!-- 投稿审核 -->
+    <div class="block">
+      <div class="block-head">
+        <h3 class="block-title">投稿审核（待审 {{ submissions.length }}）</h3>
+        <button class="btn-sm" @click="loadSubmissions">刷新</button>
+      </div>
+      <div v-if="submissions.length === 0" class="hint">暂无待审投稿</div>
+      <div v-else class="q-list">
+        <div v-for="s in submissions" :key="s.id" class="q-item">
+          <div class="q-main">
+            <span class="q-status on">待审</span>
+            <span class="q-content">{{ s.content }}</span>
+          </div>
+          <div class="q-meta">{{ s.creatorName || '用户#' + s.creatorId }} · {{ s.categoryName }}</div>
+          <div class="q-opts">
+            <span v-for="o in s.options" :key="o.id" class="q-opt">{{ o.icon }} {{ o.content }}</span>
+          </div>
+          <div class="q-actions">
+            <button class="link" @click="approveSubmission(s)">通过</button>
+            <button class="link danger" @click="rejectSubmission(s)">驳回</button>
+          </div>
+        </div>
+      </div>
+    </div>
 
     <!-- 分类区 -->
     <div class="block">
@@ -321,6 +384,7 @@ async function toggleStatus(q: Question) {
 .q-status.off { background: var(--color-bg); color: var(--color-text-muted); }
 .q-content { flex: 1; font-size: 14px; }
 .q-count { font-size: 12px; color: var(--color-text-secondary); }
+.q-meta { font-size: 12px; color: var(--color-text-secondary); margin: 6px 0; }
 .q-opts { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0; }
 .q-opt { font-size: 12px; background: var(--color-bg); padding: 3px 8px; border-radius: 8px; }
 .q-actions { display: flex; gap: 8px; }

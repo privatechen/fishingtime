@@ -5,41 +5,37 @@ import com.fishingtime.common.exception.BusinessException;
 import com.fishingtime.qa.domain.QaCategory;
 import com.fishingtime.qa.domain.QaQuestion;
 import com.fishingtime.qa.domain.QaQuestionOption;
-import com.fishingtime.qa.domain.QaQuestionSubmit;
-import com.fishingtime.qa.dto.QaSubmitAdminVO;
+import com.fishingtime.qa.domain.QaUserAnswer;
+import com.fishingtime.qa.dto.QaMySubmitVO;
+import com.fishingtime.qa.dto.QaOptionVO;
 import com.fishingtime.qa.dto.QaSubmitRequest;
 import com.fishingtime.qa.mapper.QaCategoryMapper;
 import com.fishingtime.qa.mapper.QaQuestionMapper;
 import com.fishingtime.qa.mapper.QaQuestionOptionMapper;
-import com.fishingtime.qa.mapper.QaQuestionSubmitMapper;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fishingtime.qa.mapper.QaUserAnswerMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
 /**
  * 「瞅瞅」用户出题投稿服务
  *
- * - 用户投稿进入待审队列（status=0）
- * - 管理员审核：通过 → 生成正式题目（上线）+ 标记通过；驳回 → 记录原因
+ * 投稿直接创建一道真实题目（status=0 待审 + creator_id），提交者可看可答；
+ * 管理员审核通过后 status=1 上线，驳回 status=2 + 原因。
  */
 @Service
 @RequiredArgsConstructor
 public class QaSubmitService {
 
-    private final QaQuestionSubmitMapper submitMapper;
     private final QaQuestionMapper questionMapper;
     private final QaQuestionOptionMapper optionMapper;
     private final QaCategoryMapper categoryMapper;
-    private final ObjectMapper objectMapper;
+    private final QaUserAnswerMapper answerMapper;
 
-    /** 用户投稿（待审） */
+    /** 用户投稿：创建待审题目 + 选项 */
     public void submit(Long userId, QaSubmitRequest req) {
         if (req == null || req.getContent() == null || req.getContent().isBlank()) {
             throw new BusinessException(ErrorCode.PARAM_INVALID, "请填写问题内容");
@@ -50,66 +46,26 @@ public class QaSubmitService {
         if (req.getOptions() == null || req.getOptions().size() < 2 || req.getOptions().size() > 6) {
             throw new BusinessException(ErrorCode.PARAM_INVALID, "请提供 2~6 个选项");
         }
-        for (QaSubmitRequest.QaSubmitOption o : req.getOptions()) {
-            if (o.getContent() == null || o.getContent().isBlank()) {
-                throw new BusinessException(ErrorCode.PARAM_INVALID, "选项内容不能为空");
-            }
-        }
-        String optionsJson;
-        try {
-            optionsJson = objectMapper.writeValueAsString(req.getOptions());
-        } catch (Exception e) {
-            throw new BusinessException(ErrorCode.SYSTEM_ERROR, "选项序列化失败");
-        }
-
-        QaQuestionSubmit s = new QaQuestionSubmit();
-        s.setUserId(userId);
-        s.setCategoryId(req.getCategoryId());
-        s.setContent(req.getContent().trim());
-        s.setDescription(req.getDescription());
-        s.setOptionsJson(optionsJson);
-        s.setStatus(0);
-        submitMapper.insert(s);
-    }
-
-    /** 管理后台列表（status 为空则全部） */
-    public List<QaSubmitAdminVO> list(Integer status) {
-        List<QaQuestionSubmit> subs = submitMapper.selectByStatus(status);
-        List<QaSubmitAdminVO> list = new ArrayList<>(subs.size());
-        for (QaQuestionSubmit s : subs) {
-            list.add(toAdminVO(s));
-        }
-        return list;
-    }
-
-    /** 审核通过：生成正式题目并上线，投稿标记已通过 */
-    @Transactional(rollbackFor = Exception.class)
-    public void approve(Long id) {
-        QaQuestionSubmit s = requirePending(id);
-        List<QaSubmitRequest.QaSubmitOption> opts;
-        try {
-            opts = objectMapper.readValue(s.getOptionsJson(),
-                    new TypeReference<List<QaSubmitRequest.QaSubmitOption>>() {});
-        } catch (Exception e) {
-            throw new BusinessException(ErrorCode.SYSTEM_ERROR, "投稿选项解析失败");
-        }
 
         QaQuestion q = new QaQuestion();
-        q.setCategoryId(s.getCategoryId());
-        q.setContent(s.getContent());
-        q.setDescription(s.getDescription());
-        q.setStatus(1);
+        q.setCategoryId(req.getCategoryId());
+        q.setContent(req.getContent().trim());
+        q.setDescription(req.getDescription());
+        q.setStatus(0);           // 待审
+        q.setCreatorId(userId);   // 投稿人
         q.setRecommendScore(BigDecimal.ONE);
         q.setSortOrder(0);
-        q.setPublishedAt(LocalDateTime.now());
         questionMapper.insert(q);
 
         List<QaQuestionOption> options = new ArrayList<>();
         int order = 1;
-        for (QaSubmitRequest.QaSubmitOption o : opts) {
+        for (QaSubmitRequest.QaSubmitOption o : req.getOptions()) {
+            if (o.getContent() == null || o.getContent().isBlank()) {
+                continue;
+            }
             QaQuestionOption qo = new QaQuestionOption();
             qo.setQuestionId(q.getId());
-            qo.setContent(o.getContent());
+            qo.setContent(o.getContent().trim());
             qo.setIcon(o.getIcon());
             qo.setSortOrder(order++);
             qo.setVoteCount(0);
@@ -118,41 +74,51 @@ public class QaSubmitService {
         if (!options.isEmpty()) {
             optionMapper.insertBatch(options);
         }
-        submitMapper.updateStatus(id, 1, null);
     }
 
-    /** 审核驳回 */
-    public void reject(Long id, String reason) {
-        requirePending(id);
-        submitMapper.updateStatus(id, 2, reason);
-    }
-
-    private QaQuestionSubmit requirePending(Long id) {
-        QaQuestionSubmit s = submitMapper.selectById(id);
-        if (s == null || s.getStatus() != 0) {
-            throw new BusinessException(ErrorCode.PARAM_INVALID, "投稿不存在或已处理");
+    /** 我的投稿列表 */
+    public List<QaMySubmitVO> mine(Long userId) {
+        List<QaQuestion> qs = questionMapper.selectMineByUser(userId);
+        List<QaMySubmitVO> list = new ArrayList<>(qs.size());
+        for (QaQuestion q : qs) {
+            list.add(toMyVO(userId, q));
         }
-        return s;
+        return list;
     }
 
-    private QaSubmitAdminVO toAdminVO(QaQuestionSubmit s) {
-        QaSubmitAdminVO vo = new QaSubmitAdminVO();
-        vo.setId(s.getId());
-        vo.setUserId(s.getUserId());
-        vo.setCategoryId(s.getCategoryId());
-        QaCategory c = categoryMapper.selectById(s.getCategoryId());
+    private QaMySubmitVO toMyVO(Long userId, QaQuestion q) {
+        QaMySubmitVO vo = new QaMySubmitVO();
+        vo.setQuestionId(q.getId());
+        vo.setCategoryId(q.getCategoryId());
+        QaCategory c = categoryMapper.selectById(q.getCategoryId());
         vo.setCategoryName(c != null ? c.getName() : "");
-        vo.setContent(s.getContent());
-        vo.setDescription(s.getDescription());
-        vo.setStatus(s.getStatus());
-        vo.setRejectReason(s.getRejectReason());
-        vo.setCreatedAt(s.getCreatedAt());
-        try {
-            vo.setOptions(objectMapper.readValue(s.getOptionsJson(),
-                    new TypeReference<List<QaSubmitRequest.QaSubmitOption>>() {}));
-        } catch (Exception e) {
-            vo.setOptions(new ArrayList<>());
+        vo.setContent(q.getContent());
+        vo.setStatus(q.getStatus());
+        vo.setRejectReason(q.getRejectReason());
+        vo.setAnswerCount(q.getAnswerCount());
+
+        QaUserAnswer mine = answerMapper.selectByUserAndQuestion(userId, q.getId());
+        vo.setAnswered(mine != null);
+        if (mine != null) {
+            vo.setMyOptionId(mine.getOptionId());
         }
+
+        List<QaQuestionOption> options = optionMapper.selectByQuestionId(q.getId());
+        int total = q.getAnswerCount() != null ? q.getAnswerCount() : 0;
+        List<QaOptionVO> optionVOs = new ArrayList<>(options.size());
+        for (QaQuestionOption o : options) {
+            QaOptionVO ov = new QaOptionVO();
+            ov.setId(o.getId());
+            ov.setContent(o.getContent());
+            ov.setIcon(o.getIcon());
+            ov.setSortOrder(o.getSortOrder());
+            if (mine != null) {
+                ov.setVoteCount(o.getVoteCount());
+                ov.setPercent(total > 0 ? Math.round(o.getVoteCount() * 1000.0 / total) / 10.0 : null);
+            }
+            optionVOs.add(ov);
+        }
+        vo.setOptions(optionVOs);
         return vo;
     }
 }

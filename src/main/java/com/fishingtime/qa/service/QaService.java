@@ -85,7 +85,9 @@ public class QaService {
             throw new BusinessException(ErrorCode.PARAM_INVALID, "请选择选项");
         }
         QaQuestion q = questionMapper.selectById(questionId);
-        if (q == null || q.getStatus() != 1) {
+        // 上线题可答；提交者可答自己的待审题（status=0）
+        boolean isOwner = q != null && q.getCreatorId() != null && q.getCreatorId().equals(userId);
+        if (q == null || !(q.getStatus() == 1 || (q.getStatus() == 0 && isOwner))) {
             throw new BusinessException(ErrorCode.PARAM_INVALID, "题目不可作答");
         }
         List<QaQuestionOption> options = optionMapper.selectByQuestionId(questionId);

@@ -33,21 +33,29 @@
         LIMIT 1
     </select>
 
-    <!-- 管理后台列表：categoryId 为空则全部 -->
+    <!-- 管理后台列表：categoryId/status 均可空 -->
     <select id="selectForAdmin" resultType="com.fishingtime.qa.domain.QaQuestion">
         SELECT * FROM multi_qa_question
         <where>
             <if test="categoryId != null">AND category_id = #{categoryId}</if>
+            <if test="status != null">AND status = #{status}</if>
         </where>
-        ORDER BY category_id, sort_order, id
+        ORDER BY status, category_id, sort_order, id
+    </select>
+
+    <!-- 我提交的题目（投稿） -->
+    <select id="selectMineByUser" resultType="com.fishingtime.qa.domain.QaQuestion">
+        SELECT * FROM multi_qa_question
+        WHERE creator_id = #{userId}
+        ORDER BY created_at DESC, id DESC
     </select>
 
     <insert id="insert" parameterType="com.fishingtime.qa.domain.QaQuestion"
             useGeneratedKeys="true" keyProperty="id">
         INSERT INTO multi_qa_question
-          (category_id, content, description, status, recommend_score, sort_order, published_at)
+          (category_id, content, description, status, creator_id, recommend_score, sort_order, published_at)
         VALUES
-          (#{categoryId}, #{content}, #{description}, #{status}, #{recommendScore}, #{sortOrder}, #{publishedAt})
+          (#{categoryId}, #{content}, #{description}, #{status}, #{creatorId}, #{recommendScore}, #{sortOrder}, #{publishedAt})
     </insert>
 
     <update id="update" parameterType="com.fishingtime.qa.domain.QaQuestion">
@@ -59,6 +67,10 @@
 
     <update id="updateStatus">
         UPDATE multi_qa_question SET status = #{status} WHERE id = #{id}
+    </update>
+
+    <update id="updateReject">
+        UPDATE multi_qa_question SET status = 2, reject_reason = #{reason} WHERE id = #{id}
     </update>
 
     <delete id="deleteById">
