@@ -3,6 +3,7 @@ package com.fishingtime.game.leaderboard;
 import com.fishingtime.game.mapper.ColorFocusScoreMapper;
 import com.fishingtime.game.mapper.ColorHunterScoreMapper;
 import com.fishingtime.game.mapper.DirectionTrapScoreMapper;
+import com.fishingtime.game.mapper.DontFillScoreMapper;
 import com.fishingtime.game.mapper.ExtremeFishingScoreMapper;
 import com.fishingtime.game.mapper.DetailScoreMapper;
 import com.fishingtime.game.mapper.FishBreakoutScoreMapper;
@@ -44,6 +45,7 @@ public class LeaderboardService {
     private final FishBreakoutScoreMapper fishBreakoutScoreMapper;
     private final ExtremeFishingScoreMapper extremeFishingScoreMapper;
     private final DetailScoreMapper detailScoreMapper;
+    private final DontFillScoreMapper dontFillScoreMapper;
 
     public LeaderboardDTO getLeaderboard(String gameCode, String period, int page, int pageSize, Long userId) {
         if (!config.isKnown(gameCode)) {
@@ -56,7 +58,6 @@ public class LeaderboardService {
 
         List<RankingItem> all = snap.getRankingList();
         int total = all.size();
-        // 最多展示 Top 20（不做滚动加载更多）；myRank 仍从快照取真实名次
         int to = Math.min(20, total);
 
         List<LeaderboardDTO.Item> items = new ArrayList<>();
@@ -95,7 +96,6 @@ public class LeaderboardService {
     private RankingSnapshot getSnapshot(String gameCode, String period, String direction, boolean useSecondary) {
         RankingSnapshot snap = cache.get(gameCode, period);
         String today = LocalDate.now(CN).toString();
-        // TODAY 跨天失效（同时校验 rankingDate 兜底）
         if (snap != null && "TODAY".equals(period) && !today.equals(snap.getRankingDate())) {
             snap = null;
         }
@@ -117,11 +117,10 @@ public class LeaderboardService {
             end = MAX_DATE;
         }
 
-        // TODAY 从 game_score（每局日志）按当天聚合；ALL 走各游戏 best 表（历史最佳，PRD §7/§16）
-        // 《细节》主/次级排序方向相反（答对数 DESC → 用时 ASC），走窗口函数取每人最优一局
         List<Map<String, Object>> rows;
         if ("TODAY".equals(period)) {
-            if ("detail".equals(gameCode)) {
+            // 《细节》和《别堆满方块》都是主分数 DESC、次分数 ASC，必须按“每人最优一局”取值。
+            if ("detail".equals(gameCode) || "dont-fill".equals(gameCode)) {
                 rows = gameScoreMapper.selectBestGameRankByRange(gameCode, start, end);
             } else {
                 rows = gameScoreMapper.selectRankByRange(gameCode, start, end, direction, useSecondary);
@@ -145,7 +144,6 @@ public class LeaderboardService {
         return new RankingSnapshot(list, userMap, "TODAY".equals(period) ? today : null);
     }
 
-    /** 总榜数据源：各游戏 best 表全量（已按该游戏排序规则排好） */
     private List<Map<String, Object>> queryAllRank(String gameCode) {
         switch (gameCode) {
             case "2048":
@@ -162,6 +160,8 @@ public class LeaderboardService {
                 return extremeFishingScoreMapper.selectAllRank();
             case "detail":
                 return detailScoreMapper.selectAllRank();
+            case "dont-fill":
+                return dontFillScoreMapper.selectAllRank();
             default:
                 throw new IllegalArgumentException("未知游戏: " + gameCode);
         }

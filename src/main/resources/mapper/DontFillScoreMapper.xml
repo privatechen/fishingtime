@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.fishingtime.game.mapper.DontFillScoreMapper">
+
+    <resultMap id="dontFillScoreMap" type="com.fishingtime.game.domain.DontFillScore">
+        <id column="id" property="id"/>
+        <result column="user_id" property="userId"/>
+        <result column="level" property="level"/>
+        <result column="best_time" property="bestTime"/>
+        <result column="cleared_lines" property="clearedLines"/>
+        <result column="achieved_at" property="achievedAt"/>
+        <result column="created_at" property="createdAt"/>
+        <result column="updated_at" property="updatedAt"/>
+    </resultMap>
+
+    <select id="selectByUserId" resultMap="dontFillScoreMap">
+        SELECT * FROM game_dont_fill_score WHERE user_id = #{userId}
+    </select>
+
+    <insert id="insert" parameterType="com.fishingtime.game.domain.DontFillScore"
+            useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO game_dont_fill_score (user_id, level, best_time, cleared_lines, achieved_at)
+        VALUES (#{userId}, #{level}, #{bestTime}, #{clearedLines}, NOW())
+    </insert>
+
+    <!-- 更优规则：等级更高；或等级相同且达到该等级用时更短 -->
+    <update id="updateBest">
+        UPDATE game_dont_fill_score
+        SET level = #{dto.level},
+            best_time = #{dto.bestTime},
+            cleared_lines = COALESCE(#{dto.clearedLines}, 0),
+            achieved_at = NOW()
+        WHERE user_id = #{userId}
+          AND (
+            level &lt; #{dto.level}
+            OR (level = #{dto.level} AND best_time &gt; #{dto.bestTime})
+          )
+    </update>
+
+    <select id="selectAllRank" resultType="java.util.HashMap">
+        SELECT
+            s.user_id AS userId,
+            u.nickname AS nickname,
+            s.level AS score,
+            s.best_time AS secondaryScore
+        FROM game_dont_fill_score s
+        LEFT JOIN user u ON u.id = s.user_id
+        ORDER BY s.level DESC, s.best_time ASC, s.achieved_at ASC, u.nickname ASC
+    </select>
+</mapper>
