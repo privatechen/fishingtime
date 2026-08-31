@@ -9,7 +9,7 @@ import java.util.Map;
  * 各游戏排行榜排序配置（不硬编码在某款游戏接口里，PRD §8/§98）
  *
  * direction: 'desc' 分数型（越高越前）/ 'asc' 耗时型（越低越前，如颜色猎手）
- * useSecondary: 排序是否纳入次级指标（鱼群突围：同清空池数再比放生数）
+ * useSecondary: 排序是否纳入次级指标
  */
 @Component
 public class GameRankingConfig {
@@ -34,6 +34,8 @@ public class GameRankingConfig {
         SPECS.put("extreme-fishing", new Spec("desc", false));
         // 《细节》：答对数降序为主，用时升序为次级，走独立窗口函数查询
         SPECS.put("detail", new Spec("desc", true));
+        // 《别堆满方块》：等级降序为主，同等级用时升序为次级，走独立窗口函数查询
+        SPECS.put("dont-fill", new Spec("desc", true));
     }
 
     private static final Spec DEFAULT = new Spec("desc", false);
