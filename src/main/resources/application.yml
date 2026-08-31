@@ -43,9 +43,9 @@ uapis:
 wechat:
   apps:
     - appid: wxfd687fffa06aea50
-      secret: ${WX_SECRET_1:}
+      secret: ${WX_SECRET_MINIPROGRAM:}
     - appid: wx13a237243a856ba4
-      secret: ${WX_SECRET_2:}
+      secret: ${WX_SECRET_MINIGAME:}
 
 # 快手热榜 API（普通 10 分钟刷新）
 kuaishou:
