@@ -5,12 +5,12 @@ import lombok.Data;
 import java.math.BigDecimal;
 
 /**
- * 我的游戏成绩 — 聚合四款游戏的核心指标（一次返回）
+ * 我的游戏成绩 — 聚合各游戏的核心指标（一次返回）
  */
 @Data
 public class GameRecordDTO {
 
-    /** 游戏标识：2048 / color-focus / direction-trap / color-hunter */
+    /** 游戏标识 */
     private String gameType;
 
     /** 2048 / 专注色彩 / 方向陷阱：核心成绩（得分制，越大越好） */
@@ -54,4 +54,13 @@ public class GameRecordDTO {
 
     /** 极限捞鱼：最佳记录河豚失误数 */
     private Integer bestPufferMistakes;
+
+    /** 进阶俄罗斯：最高等级 */
+    private Integer bestLevel;
+
+    /** 进阶俄罗斯：达到最高等级的最佳用时（毫秒） */
+    private Long bestTime;
+
+    /** 进阶俄罗斯：最佳局消除行数 */
+    private Integer bestClearedLines;
 }
