@@ -125,6 +125,15 @@ public class WxAuthService {
                 + "&secret=" + appSecret
                 + "&js_code=" + code
                 + "&grant_type=authorization_code";
+
+        // 不打印完整 secret/code，避免生产日志泄露微信凭证；保留 appId 和脱敏 URL 足够排查选错配置的问题。
+        String safeUrl = "https://api.weixin.qq.com/sns/jscode2session"
+                + "?appid=" + appId
+                + "&secret=" + maskSecret(appSecret)
+                + "&js_code=" + maskCode(code)
+                + "&grant_type=authorization_code";
+        log.info("[微信] code2session 请求 url={}, appId={}, secretLength={}", safeUrl, appId, appSecret.length());
+
         try {
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(URI.create(url))
@@ -135,16 +144,40 @@ public class WxAuthService {
             JsonNode root = objectMapper.readTree(resp.body());
             String openid = root.path("openid").asText(null);
             if (openid == null || openid.isEmpty()) {
-                log.warn("[微信] code2session 失败，errcode={}", root.path("errcode").asText());
+                log.warn("[微信] code2session 失败，appId={}, httpStatus={}, errcode={}, errmsg={}",
+                        appId,
+                        resp.statusCode(),
+                        root.path("errcode").asText(),
+                        root.path("errmsg").asText());
                 throw new BusinessException(ErrorCode.LOGIN_FAILED, "微信登录凭证校验失败");
             }
             return openid;
         } catch (BusinessException e) {
             throw e;
         } catch (Exception e) {
-            log.error("[微信] code2session 异常", e);
+            log.error("[微信] code2session 异常, appId={}", appId, e);
             throw new BusinessException(ErrorCode.SYSTEM_ERROR, "微信登录服务异常");
         }
+    }
+
+    private String maskSecret(String secret) {
+        if (secret == null || secret.isEmpty()) {
+            return "<empty>";
+        }
+        if (secret.length() <= 6) {
+            return "***";
+        }
+        return secret.substring(0, 3) + "***" + secret.substring(secret.length() - 3);
+    }
+
+    private String maskCode(String code) {
+        if (code == null || code.isEmpty()) {
+            return "<empty>";
+        }
+        if (code.length() <= 8) {
+            return "***";
+        }
+        return code.substring(0, 4) + "***" + code.substring(code.length() - 4);
     }
 
     /** OpenID 脱敏，日志不记录完整值 */
