@@ -3,6 +3,7 @@ package com.fishingtime.game.service;
 import com.fishingtime.game.domain.ColorFocusScore;
 import com.fishingtime.game.domain.ColorHunterScore;
 import com.fishingtime.game.domain.DirectionTrapScore;
+import com.fishingtime.game.domain.DontFillScore;
 import com.fishingtime.game.domain.ExtremeFishingScore;
 import com.fishingtime.game.domain.FishBreakoutScore;
 import com.fishingtime.game.domain.Game2048Score;
@@ -10,6 +11,7 @@ import com.fishingtime.game.dto.GameRecordDTO;
 import com.fishingtime.game.mapper.ColorFocusScoreMapper;
 import com.fishingtime.game.mapper.ColorHunterScoreMapper;
 import com.fishingtime.game.mapper.DirectionTrapScoreMapper;
+import com.fishingtime.game.mapper.DontFillScoreMapper;
 import com.fishingtime.game.mapper.ExtremeFishingScoreMapper;
 import com.fishingtime.game.mapper.FishBreakoutScoreMapper;
 import com.fishingtime.game.mapper.Game2048ScoreMapper;
@@ -20,10 +22,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * 我的游戏成绩聚合服务
- *
- * 一次返回四款游戏当前用户的核心最佳成绩（避免前端逐个游戏发起请求）。
- * 无记录的游戏返回字段为 null，由前端展示"暂无记录"。
+ * 我的游戏成绩聚合服务。
  */
 @Service
 @RequiredArgsConstructor
@@ -35,6 +34,7 @@ public class MyGameRecordService {
     private final ColorHunterScoreMapper colorHunterScoreMapper;
     private final FishBreakoutScoreMapper fishBreakoutScoreMapper;
     private final ExtremeFishingScoreMapper extremeFishingScoreMapper;
+    private final DontFillScoreMapper dontFillScoreMapper;
 
     public List<GameRecordDTO> getMyRecords(Long userId) {
         List<GameRecordDTO> list = new ArrayList<>();
@@ -42,6 +42,7 @@ public class MyGameRecordService {
         list.add(buildColorFocus(userId));
         list.add(buildDirectionTrap(userId));
         list.add(buildColorHunter(userId));
+        list.add(buildDontFill(userId));
         list.add(buildFishBreakout(userId));
         list.add(buildExtremeFishing(userId));
         return list;
@@ -89,6 +90,18 @@ public class MyGameRecordService {
             dto.setBestFinalTime(score.getBestFinalTime());
             dto.setBestActualTime(score.getBestActualTime());
             dto.setLowestErrorCount(score.getLowestErrorCount());
+        }
+        return dto;
+    }
+
+    private GameRecordDTO buildDontFill(Long userId) {
+        GameRecordDTO dto = new GameRecordDTO();
+        dto.setGameType("dont-fill");
+        DontFillScore score = dontFillScoreMapper.selectByUserId(userId);
+        if (score != null) {
+            dto.setBestLevel(score.getLevel());
+            dto.setBestTime(score.getBestTime());
+            dto.setBestClearedLines(score.getClearedLines());
         }
         return dto;
     }
