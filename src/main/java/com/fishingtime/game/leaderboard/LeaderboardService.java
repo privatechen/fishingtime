@@ -9,6 +9,7 @@ import com.fishingtime.game.mapper.DetailScoreMapper;
 import com.fishingtime.game.mapper.FishBreakoutScoreMapper;
 import com.fishingtime.game.mapper.Game2048ScoreMapper;
 import com.fishingtime.game.mapper.GameScoreMapper;
+import com.fishingtime.game.mapper.StackTowerScoreMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -19,14 +20,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-/**
- * 排行榜服务（PRD §17/§20）
- *
- * - TODAY / ALL 统一从 game_score 聚合（TODAY 按北京时间当天，ALL 全量）
- * - Cache First：命中 LocalRankingCache 直接返回，不查 MySQL
- * - TODAY 跨天失效；分页基于内存快照切片
- * - myRank 从快照的 userRankingMap 取（用户不在 Top 范围内也能知道真实名次）
- */
 @Service
 @RequiredArgsConstructor
 public class LeaderboardService {
@@ -46,20 +39,17 @@ public class LeaderboardService {
     private final ExtremeFishingScoreMapper extremeFishingScoreMapper;
     private final DetailScoreMapper detailScoreMapper;
     private final DontFillScoreMapper dontFillScoreMapper;
+    private final StackTowerScoreMapper stackTowerScoreMapper;
 
     public LeaderboardDTO getLeaderboard(String gameCode, String period, int page, int pageSize, Long userId) {
-        if (!config.isKnown(gameCode)) {
-            throw new IllegalArgumentException("未知游戏: " + gameCode);
-        }
+        if (!config.isKnown(gameCode)) throw new IllegalArgumentException("未知游戏: " + gameCode);
         String direction = config.direction(gameCode);
         boolean useSecondary = config.useSecondary(gameCode);
-
         RankingSnapshot snap = getSnapshot(gameCode, period, direction, useSecondary);
 
         List<RankingItem> all = snap.getRankingList();
         int total = all.size();
         int to = Math.min(20, total);
-
         List<LeaderboardDTO.Item> items = new ArrayList<>();
         for (int i = 0; i < to; i++) {
             RankingItem item = all.get(i);
@@ -96,11 +86,8 @@ public class LeaderboardService {
     private RankingSnapshot getSnapshot(String gameCode, String period, String direction, boolean useSecondary) {
         RankingSnapshot snap = cache.get(gameCode, period);
         String today = LocalDate.now(CN).toString();
-        if (snap != null && "TODAY".equals(period) && !today.equals(snap.getRankingDate())) {
-            snap = null;
-        }
+        if (snap != null && "TODAY".equals(period) && !today.equals(snap.getRankingDate())) snap = null;
         if (snap != null) return snap;
-
         snap = buildSnapshot(gameCode, period, direction, useSecondary, today);
         cache.put(gameCode, period, snap);
         return snap;
@@ -119,26 +106,28 @@ public class LeaderboardService {
 
         List<Map<String, Object>> rows;
         if ("TODAY".equals(period)) {
-            // 《细节》和《别堆满方块》都是主分数 DESC、次分数 ASC，必须按“每人最优一局”取值。
             if ("detail".equals(gameCode) || "dont-fill".equals(gameCode)) {
                 rows = gameScoreMapper.selectBestGameRankByRange(gameCode, start, end);
+            } else if ("stack-tower".equals(gameCode)) {
+                rows = gameScoreMapper.selectBestGameRankDescSecondaryByRange(gameCode, start, end);
             } else {
                 rows = gameScoreMapper.selectRankByRange(gameCode, start, end, direction, useSecondary);
             }
         } else {
             rows = queryAllRank(gameCode);
         }
+
         List<RankingItem> list = new ArrayList<>(rows.size());
         Map<Long, Integer> userMap = new HashMap<>();
         int rank = 1;
         for (Map<String, Object> row : rows) {
-            Long userId = ((Number) row.get("userId")).longValue();
+            Long rowUserId = ((Number) row.get("userId")).longValue();
             String nickname = row.get("nickname") != null ? row.get("nickname").toString() : "匿名用户";
             int score = ((Number) row.get("score")).intValue();
             Object sec = row.get("secondaryScore");
             Integer secondary = sec != null ? ((Number) sec).intValue() : null;
-            list.add(new RankingItem(rank, userId, nickname, score, secondary));
-            userMap.put(userId, rank);
+            list.add(new RankingItem(rank, rowUserId, nickname, score, secondary));
+            userMap.put(rowUserId, rank);
             rank++;
         }
         return new RankingSnapshot(list, userMap, "TODAY".equals(period) ? today : null);
@@ -146,24 +135,16 @@ public class LeaderboardService {
 
     private List<Map<String, Object>> queryAllRank(String gameCode) {
         switch (gameCode) {
-            case "2048":
-                return game2048ScoreMapper.selectAllRank();
-            case "color-focus":
-                return colorFocusScoreMapper.selectAllRank();
-            case "direction-trap":
-                return directionTrapScoreMapper.selectAllRank();
-            case "color-hunter":
-                return colorHunterScoreMapper.selectAllRank();
-            case "fish-breakout":
-                return fishBreakoutScoreMapper.selectAllRank();
-            case "extreme-fishing":
-                return extremeFishingScoreMapper.selectAllRank();
-            case "detail":
-                return detailScoreMapper.selectAllRank();
-            case "dont-fill":
-                return dontFillScoreMapper.selectAllRank();
-            default:
-                throw new IllegalArgumentException("未知游戏: " + gameCode);
+            case "2048": return game2048ScoreMapper.selectAllRank();
+            case "color-focus": return colorFocusScoreMapper.selectAllRank();
+            case "direction-trap": return directionTrapScoreMapper.selectAllRank();
+            case "color-hunter": return colorHunterScoreMapper.selectAllRank();
+            case "fish-breakout": return fishBreakoutScoreMapper.selectAllRank();
+            case "extreme-fishing": return extremeFishingScoreMapper.selectAllRank();
+            case "detail": return detailScoreMapper.selectAllRank();
+            case "dont-fill": return dontFillScoreMapper.selectAllRank();
+            case "stack-tower": return stackTowerScoreMapper.selectAllRank();
+            default: throw new IllegalArgumentException("未知游戏: " + gameCode);
         }
     }
 }
