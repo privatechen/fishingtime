@@ -32,10 +32,10 @@ public class GameRankingConfig {
         SPECS.put("color-hunter", new Spec("asc", false));
         SPECS.put("fish-breakout", new Spec("desc", true));
         SPECS.put("extreme-fishing", new Spec("desc", false));
-        // 《细节》：答对数降序为主，用时升序为次级，走独立窗口函数查询
         SPECS.put("detail", new Spec("desc", true));
-        // 《别堆满方块》：等级降序为主，同等级用时升序为次级，走独立窗口函数查询
         SPECS.put("dont-fill", new Spec("desc", true));
+        // 堆塔：层数降序；同层数 Perfect 次数降序。
+        SPECS.put("stack-tower", new Spec("desc", true));
     }
 
     private static final Spec DEFAULT = new Spec("desc", false);
