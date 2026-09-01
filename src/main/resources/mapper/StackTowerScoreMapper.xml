@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.fishingtime.game.mapper.StackTowerScoreMapper">
+
+    <resultMap id="stackTowerScoreMap" type="com.fishingtime.game.domain.StackTowerScore">
+        <id column="id" property="id"/>
+        <result column="user_id" property="userId"/>
+        <result column="max_floor" property="maxFloor"/>
+        <result column="perfect_count" property="perfectCount"/>
+        <result column="achieved_at" property="achievedAt"/>
+        <result column="created_at" property="createdAt"/>
+        <result column="updated_at" property="updatedAt"/>
+    </resultMap>
+
+    <select id="selectByUserId" resultMap="stackTowerScoreMap">
+        SELECT * FROM game_stack_tower_score WHERE user_id = #{userId}
+    </select>
+
+    <insert id="insert" parameterType="com.fishingtime.game.domain.StackTowerScore"
+            useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO game_stack_tower_score (user_id, max_floor, perfect_count, achieved_at)
+        VALUES (#{userId}, #{maxFloor}, #{perfectCount}, NOW())
+    </insert>
+
+    <!-- 更优规则：层数更高；或层数相同且 Perfect 次数更多 -->
+    <update id="updateBest">
+        UPDATE game_stack_tower_score
+        SET max_floor = #{dto.floor},
+            perfect_count = COALESCE(#{dto.perfectCount}, 0),
+            achieved_at = NOW()
+        WHERE user_id = #{userId}
+          AND (
+            max_floor &lt; #{dto.floor}
+            OR (max_floor = #{dto.floor} AND perfect_count &lt; COALESCE(#{dto.perfectCount}, 0))
+          )
+    </update>
+
+    <select id="selectAllRank" resultType="java.util.HashMap">
+        SELECT
+            s.user_id AS userId,
+            u.nickname AS nickname,
+            s.max_floor AS score,
+            s.perfect_count AS secondaryScore
+        FROM game_stack_tower_score s
+        LEFT JOIN user u ON u.id = s.user_id
+        ORDER BY s.max_floor DESC, s.perfect_count DESC, s.achieved_at ASC, u.nickname ASC
+    </select>
+</mapper>
