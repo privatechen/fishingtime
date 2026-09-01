@@ -1,29 +1,15 @@
 package com.fishingtime.game.service;
 
-import com.fishingtime.game.domain.ColorFocusScore;
-import com.fishingtime.game.domain.ColorHunterScore;
-import com.fishingtime.game.domain.DirectionTrapScore;
-import com.fishingtime.game.domain.DontFillScore;
-import com.fishingtime.game.domain.ExtremeFishingScore;
-import com.fishingtime.game.domain.FishBreakoutScore;
-import com.fishingtime.game.domain.Game2048Score;
+import com.fishingtime.game.domain.*;
 import com.fishingtime.game.dto.GameRecordDTO;
-import com.fishingtime.game.mapper.ColorFocusScoreMapper;
-import com.fishingtime.game.mapper.ColorHunterScoreMapper;
-import com.fishingtime.game.mapper.DirectionTrapScoreMapper;
-import com.fishingtime.game.mapper.DontFillScoreMapper;
-import com.fishingtime.game.mapper.ExtremeFishingScoreMapper;
-import com.fishingtime.game.mapper.FishBreakoutScoreMapper;
-import com.fishingtime.game.mapper.Game2048ScoreMapper;
+import com.fishingtime.game.mapper.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * 我的游戏成绩聚合服务。
- */
+/** 我的游戏成绩聚合服务。 */
 @Service
 @RequiredArgsConstructor
 public class MyGameRecordService {
@@ -35,6 +21,7 @@ public class MyGameRecordService {
     private final FishBreakoutScoreMapper fishBreakoutScoreMapper;
     private final ExtremeFishingScoreMapper extremeFishingScoreMapper;
     private final DontFillScoreMapper dontFillScoreMapper;
+    private final StackTowerScoreMapper stackTowerScoreMapper;
 
     public List<GameRecordDTO> getMyRecords(Long userId) {
         List<GameRecordDTO> list = new ArrayList<>();
@@ -43,92 +30,65 @@ public class MyGameRecordService {
         list.add(buildDirectionTrap(userId));
         list.add(buildColorHunter(userId));
         list.add(buildDontFill(userId));
+        list.add(buildStackTower(userId));
         list.add(buildFishBreakout(userId));
         list.add(buildExtremeFishing(userId));
         return list;
     }
 
     private GameRecordDTO build2048(Long userId) {
-        GameRecordDTO dto = new GameRecordDTO();
-        dto.setGameType("2048");
+        GameRecordDTO dto = new GameRecordDTO(); dto.setGameType("2048");
         Game2048Score score = game2048ScoreMapper.selectByUserId(userId);
-        if (score != null) {
-            dto.setBestScore(score.getBestScore());
-            dto.setMaxTile(score.getMaxTile());
-        }
+        if (score != null) { dto.setBestScore(score.getBestScore()); dto.setMaxTile(score.getMaxTile()); }
         return dto;
     }
 
     private GameRecordDTO buildColorFocus(Long userId) {
-        GameRecordDTO dto = new GameRecordDTO();
-        dto.setGameType("color-focus");
+        GameRecordDTO dto = new GameRecordDTO(); dto.setGameType("color-focus");
         ColorFocusScore score = colorFocusScoreMapper.selectByUserId(userId);
-        if (score != null) {
-            dto.setBestScore(score.getBestScore());
-            dto.setBestAccuracy(score.getBestAccuracy());
-            dto.setMaxStreak(score.getMaxStreak());
-        }
+        if (score != null) { dto.setBestScore(score.getBestScore()); dto.setBestAccuracy(score.getBestAccuracy()); dto.setMaxStreak(score.getMaxStreak()); }
         return dto;
     }
 
     private GameRecordDTO buildDirectionTrap(Long userId) {
-        GameRecordDTO dto = new GameRecordDTO();
-        dto.setGameType("direction-trap");
+        GameRecordDTO dto = new GameRecordDTO(); dto.setGameType("direction-trap");
         DirectionTrapScore score = directionTrapScoreMapper.selectByUserId(userId);
-        if (score != null) {
-            dto.setBestScore(score.getBestScore());
-            dto.setMaxStreak(score.getMaxStreak());
-        }
+        if (score != null) { dto.setBestScore(score.getBestScore()); dto.setMaxStreak(score.getMaxStreak()); }
         return dto;
     }
 
     private GameRecordDTO buildColorHunter(Long userId) {
-        GameRecordDTO dto = new GameRecordDTO();
-        dto.setGameType("color-hunter");
+        GameRecordDTO dto = new GameRecordDTO(); dto.setGameType("color-hunter");
         ColorHunterScore score = colorHunterScoreMapper.selectByUserId(userId);
-        if (score != null) {
-            dto.setBestFinalTime(score.getBestFinalTime());
-            dto.setBestActualTime(score.getBestActualTime());
-            dto.setLowestErrorCount(score.getLowestErrorCount());
-        }
+        if (score != null) { dto.setBestFinalTime(score.getBestFinalTime()); dto.setBestActualTime(score.getBestActualTime()); dto.setLowestErrorCount(score.getLowestErrorCount()); }
         return dto;
     }
 
     private GameRecordDTO buildDontFill(Long userId) {
-        GameRecordDTO dto = new GameRecordDTO();
-        dto.setGameType("dont-fill");
+        GameRecordDTO dto = new GameRecordDTO(); dto.setGameType("dont-fill");
         DontFillScore score = dontFillScoreMapper.selectByUserId(userId);
-        if (score != null) {
-            dto.setBestLevel(score.getLevel());
-            dto.setBestTime(score.getBestTime());
-            dto.setBestClearedLines(score.getClearedLines());
-        }
+        if (score != null) { dto.setBestLevel(score.getLevel()); dto.setBestTime(score.getBestTime()); dto.setBestClearedLines(score.getClearedLines()); }
+        return dto;
+    }
+
+    private GameRecordDTO buildStackTower(Long userId) {
+        GameRecordDTO dto = new GameRecordDTO(); dto.setGameType("stack-tower");
+        StackTowerScore score = stackTowerScoreMapper.selectByUserId(userId);
+        if (score != null) { dto.setBestFloor(score.getMaxFloor()); dto.setStackPerfectCount(score.getPerfectCount()); }
         return dto;
     }
 
     private GameRecordDTO buildFishBreakout(Long userId) {
-        GameRecordDTO dto = new GameRecordDTO();
-        dto.setGameType("fish-breakout");
+        GameRecordDTO dto = new GameRecordDTO(); dto.setGameType("fish-breakout");
         FishBreakoutScore score = fishBreakoutScoreMapper.selectByUserId(userId);
-        if (score != null) {
-            dto.setBestClearedPools(score.getBestClearedPools());
-            dto.setBestReleasedFish(score.getBestReleasedFish());
-            dto.setBestMistakes(score.getBestMistakes());
-            dto.setBestDuration(score.getBestDuration());
-        }
+        if (score != null) { dto.setBestClearedPools(score.getBestClearedPools()); dto.setBestReleasedFish(score.getBestReleasedFish()); dto.setBestMistakes(score.getBestMistakes()); dto.setBestDuration(score.getBestDuration()); }
         return dto;
     }
 
     private GameRecordDTO buildExtremeFishing(Long userId) {
-        GameRecordDTO dto = new GameRecordDTO();
-        dto.setGameType("extreme-fishing");
+        GameRecordDTO dto = new GameRecordDTO(); dto.setGameType("extreme-fishing");
         ExtremeFishingScore score = extremeFishingScoreMapper.selectByUserId(userId);
-        if (score != null) {
-            dto.setBestScore(score.getBestScore());
-            dto.setBestPerfectCount(score.getBestPerfectCount());
-            dto.setBestMaxCombo(score.getBestMaxCombo());
-            dto.setBestPufferMistakes(score.getBestPufferMistakes());
-        }
+        if (score != null) { dto.setBestScore(score.getBestScore()); dto.setBestPerfectCount(score.getBestPerfectCount()); dto.setBestMaxCombo(score.getBestMaxCombo()); dto.setBestPufferMistakes(score.getBestPufferMistakes()); }
         return dto;
     }
 }

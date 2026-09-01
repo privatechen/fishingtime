@@ -9,7 +9,6 @@
         VALUES (#{userId}, #{gameCode}, #{score}, #{secondaryScore}, #{playedAt}, #{valid})
     </insert>
 
-    <!-- 按时间范围聚合每用户最佳成绩；direction 决定 MAX/MIN 与排序方向；useSecondary 决定是否纳入次级指标排序 -->
     <select id="selectRankByRange" resultType="java.util.HashMap">
         SELECT
             gs.user_id AS userId,
@@ -38,8 +37,7 @@
         MIN(gs.played_at) ASC
     </select>
 
-    <!-- 混合方向最佳一局排名（《细节》今日榜）：ROW_NUMBER 每人取最优一局
-         答对数 DESC → 用时 ASC → 达成时间 ASC；结果按同序输出 -->
+    <!-- 主指标 DESC、次级指标 ASC：detail / dont-fill -->
     <select id="selectBestGameRankByRange" resultType="java.util.HashMap">
         SELECT t.user_id AS userId,
                u.nickname AS nickname,
@@ -62,6 +60,29 @@
         ORDER BY t.score DESC, t.secondary_score ASC, t.played_at ASC
     </select>
 
+    <!-- 主指标 DESC、次级指标 DESC：stack-tower，保证 Perfect 与同一局最高层成绩绑定 -->
+    <select id="selectBestGameRankDescSecondaryByRange" resultType="java.util.HashMap">
+        SELECT t.user_id AS userId,
+               u.nickname AS nickname,
+               t.score AS score,
+               t.secondary_score AS secondaryScore
+        FROM (
+            SELECT gs.user_id, gs.score, gs.secondary_score, gs.played_at,
+                   ROW_NUMBER() OVER (
+                       PARTITION BY gs.user_id
+                       ORDER BY gs.score DESC, gs.secondary_score DESC, gs.played_at ASC
+                   ) AS rn
+            FROM game_score gs
+            WHERE gs.game_code = #{gameCode}
+              AND gs.valid = 1
+              AND gs.played_at &gt;= #{start}
+              AND gs.played_at &lt; #{end}
+        ) t
+        LEFT JOIN user u ON u.id = t.user_id
+        WHERE t.rn = 1
+        ORDER BY t.score DESC, t.secondary_score DESC, t.played_at ASC
+    </select>
+
     <select id="countDistinctUsers" resultType="long">
         SELECT COUNT(DISTINCT gs.user_id)
         FROM game_score gs
@@ -71,7 +92,6 @@
           AND gs.played_at &lt; #{end}
     </select>
 
-    <!-- 用户在某时间范围内的最佳成绩（提交后判断是否变化） -->
     <select id="selectUserBestInRange" resultType="java.lang.Integer">
         SELECT
             <choose>
