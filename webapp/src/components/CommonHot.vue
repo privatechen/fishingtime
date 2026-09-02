@@ -22,7 +22,7 @@ onMounted(async () => {
   <div class="card">
     <div class="sidebar-card-header">🌐 全网共同热点</div>
     <div class="sidebar-card-body common-hot-list">
-      <!-- 全部放进可滚动容器，超过约 4 条高度可下滑（前几条也在框内） -->
+      <!-- 默认展示约 3 条，超过后在卡片内部上下滚动 -->
       <div
         v-for="cluster in clusters"
         :key="cluster.title"
@@ -52,9 +52,32 @@ onMounted(async () => {
 .common-hot-list {
   padding-top: 4px;
   padding-bottom: 4px;
-  /* 超过约 4 条高度时列表内滚动（前几条也在框内） */
+  /* 保持卡片紧凑：默认约展示 3 条，剩余热点通过内部滚动查看 */
   max-height: 250px;
   overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(120, 120, 120, 0.32) transparent;
+  -webkit-overflow-scrolling: touch;
+}
+
+.common-hot-list::-webkit-scrollbar {
+  width: 5px;
+}
+
+.common-hot-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.common-hot-list::-webkit-scrollbar-thumb {
+  background: rgba(120, 120, 120, 0.28);
+  border-radius: 999px;
+}
+
+.common-hot-list::-webkit-scrollbar-thumb:hover {
+  background: rgba(120, 120, 120, 0.46);
 }
 
 .common-hot-item + .common-hot-item {
