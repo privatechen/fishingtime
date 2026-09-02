@@ -16,10 +16,9 @@ import java.util.stream.Collectors;
  *
  * 与旧版“标题 token 相似度”不同，本实现把标题拆成：
  * 1) 普通语义词；2) 数字实体；3) 动作/关系语义；4) 稀有核心词；5) 字符级相似度。
- * 先做候选事件匹配，再用“锚点 + 最佳成员”保守聚类，避免 single-link 串簇。
  *
- * 该类完全独立输出 SimilarHotClusterDTO，便于与旧 HotSimilarityService + CommonHotRefiner
- * 随时切换对比。
+ * V2.1 先用硬事件指纹做预聚类，再对剩余标题做“锚点 + 最佳成员”的保守聚类。
+ * 这样可以避免 260 + 2600 这类高确定性事件在贪心阶段被其它普通语义簇提前吸收。
  */
 @Service
 public class EventFingerprintClusterService {
@@ -50,12 +49,21 @@ public class EventFingerprintClusterService {
                 .comparingInt((Candidate c) -> safeRank(c.item))
                 .thenComparing(Comparator.comparingInt((Candidate c) -> safeScore(c.item)).reversed()));
 
-        List<EventCluster> clusters = new ArrayList<>();
-        for (Candidate candidate : candidates) {
-            ClusterMatch best = findBestCluster(candidate, clusters);
+        // 第一阶段：硬事件指纹预聚类。
+        // hardEvidence 是高确定性证据，必须先锁定事件，不能被后续贪心语义聚类拆散或吞掉。
+        PreClusterResult preClusterResult = preClusterHardEvidence(candidates);
+        List<EventCluster> clusters = new ArrayList<>(preClusterResult.hardClusters);
+
+        // 第二阶段：仅对未被硬指纹锁定的候选做普通保守聚类。
+        List<EventCluster> softClusters = new ArrayList<>();
+        for (int i = 0; i < candidates.size(); i++) {
+            if (preClusterResult.assigned[i]) continue;
+            Candidate candidate = candidates.get(i);
+            ClusterMatch best = findBestCluster(candidate, softClusters);
             if (best != null && best.accepted) best.cluster.add(candidate);
-            else clusters.add(new EventCluster(candidate));
+            else softClusters.add(new EventCluster(candidate));
         }
+        clusters.addAll(softClusters);
 
         List<EventView> result = new ArrayList<>();
         for (EventCluster cluster : clusters) {
@@ -64,7 +72,9 @@ public class EventFingerprintClusterService {
 
             Map<String, ScoredCandidate> bestPerPlatform = new HashMap<>();
             for (Candidate member : cluster.members) {
-                double score = eventScore(member, cluster.anchor).score;
+                // 不只跟 anchor 比。硬预聚类可能通过 A-B、B-C 形成稳定事件组，
+                // 此时 C 与 A 的直接分数未必最高，应取簇内最佳事件证据。
+                double score = scoreAgainstCluster(member, cluster);
                 ScoredCandidate old = bestPerPlatform.get(member.platform);
                 if (old == null || score > old.score
                         || (Math.abs(score - old.score) < 0.0001 && safeRank(member.item) < safeRank(old.candidate.item))) {
@@ -93,7 +103,6 @@ public class EventFingerprintClusterService {
 
             result.add(new EventView(
                     SimilarHotClusterDTO.builder()
-                            // 不再拼接关键词，直接用最有代表性的完整原标题，避免生成怪标题。
                             .title(cluster.anchor.item.getTitle())
                             .sourceCount(bestPerPlatform.size())
                             .items(items)
@@ -109,6 +118,64 @@ public class EventFingerprintClusterService {
                 .thenComparing(Comparator.comparingDouble((EventView x) -> x.confidence).reversed()));
 
         return result.stream().map(x -> x.dto).limit(10).collect(Collectors.toList());
+    }
+
+    /**
+     * 对 hardEvidence 做 Union-Find 预聚类。
+     *
+     * 只把“至少来自两个平台”的硬分组提前锁定；纯单平台硬相似仍交给后续流程，
+     * 避免单个平台的重复标题占用共同热点事件组。
+     */
+    private PreClusterResult preClusterHardEvidence(List<Candidate> candidates) {
+        int n = candidates.size();
+        DisjointSet dsu = new DisjointSet(n);
+
+        for (int i = 0; i < n; i++) {
+            Candidate a = candidates.get(i);
+            for (int j = i + 1; j < n; j++) {
+                Candidate b = candidates.get(j);
+                if (a.platform.equals(b.platform)) continue;
+                if (eventScore(a, b).hardEvidence) dsu.union(i, j);
+            }
+        }
+
+        Map<Integer, List<Integer>> groups = new LinkedHashMap<>();
+        for (int i = 0; i < n; i++) {
+            groups.computeIfAbsent(dsu.find(i), x -> new ArrayList<>()).add(i);
+        }
+
+        boolean[] assigned = new boolean[n];
+        List<EventCluster> hardClusters = new ArrayList<>();
+        for (List<Integer> indexes : groups.values()) {
+            if (indexes.size() < 2) continue;
+
+            Set<String> platforms = indexes.stream()
+                    .map(i -> candidates.get(i).platform)
+                    .collect(Collectors.toSet());
+            if (platforms.size() < 2) continue;
+
+            // candidates 已按排名排序，因此第一个就是最合适的展示 anchor。
+            EventCluster cluster = new EventCluster(candidates.get(indexes.get(0)));
+            assigned[indexes.get(0)] = true;
+            for (int k = 1; k < indexes.size(); k++) {
+                int index = indexes.get(k);
+                cluster.add(candidates.get(index));
+                assigned[index] = true;
+            }
+            hardClusters.add(cluster);
+        }
+
+        return new PreClusterResult(hardClusters, assigned);
+    }
+
+    private double scoreAgainstCluster(Candidate candidate, EventCluster cluster) {
+        double best = 0D;
+        for (Candidate member : cluster.members) {
+            if (member == candidate) continue;
+            best = Math.max(best, eventScore(candidate, member).score);
+        }
+        if (best == 0D) best = eventScore(candidate, cluster.anchor).score;
+        return best;
     }
 
     private List<Candidate> buildCandidates(Map<String, List<HotItemDTO>> platformData) {
@@ -153,7 +220,6 @@ public class EventFingerprintClusterService {
                 if (s.score > bestMember.score) bestMember = s;
             }
 
-            // 保守聚类：普通匹配仍要求锚点兜底；硬事件指纹可绕过锚点，避免强证据被中心标题挡住。
             double composite = 0.62D * bestMember.score + 0.38D * anchorScore.score;
             boolean strong = bestMember.strongEvidence;
             boolean hard = bestMember.hardEvidence || anchorScore.hardEvidence;
@@ -165,20 +231,13 @@ public class EventFingerprintClusterService {
             if (accepted && composite > bestComposite) {
                 bestComposite = composite;
                 bestCluster = cluster;
-                best = new MatchScore(
-                        composite,
-                        strong || anchorScore.strongEvidence,
-                        hard
-                );
+                best = new MatchScore(composite, strong || anchorScore.strongEvidence, hard);
             }
         }
         return bestCluster == null ? null : new ClusterMatch(bestCluster, best, true);
     }
 
-    /**
-     * 两个标题是否属于同一事件。
-     * 核心不是“句子像不像”，而是“事件指纹是否一致”。
-     */
+    /** 两个标题是否属于同一事件。 */
     private MatchScore eventScore(Candidate a, Candidate b) {
         int sharedNumbers = intersectionSize(a.numbers, b.numbers);
         int sharedStrongNumbers = strongNumberIntersectionSize(a.numbers, b.numbers);
@@ -193,7 +252,6 @@ public class EventFingerprintClusterService {
         double actionScore = jaccard(a.actions, b.actions);
         double charScore = diceBigrams(a.normalized, b.normalized);
 
-        // 没有动作词时，不让 actionScore 贡献虚假的 1 分。
         double score = 0.34D * coreScore
                 + 0.22D * numberScore
                 + 0.14D * actionScore
@@ -204,32 +262,26 @@ public class EventFingerprintClusterService {
         boolean hardEvidence = false;
 
         // 两个完全相同、且不是年份的数字实体，本身就是硬事件指纹。
-        // 例如 260 + 2600，不再依赖 Jieba 是否恰好切出共同语义词。
         if (sharedStrongNumbers >= 2) {
             score = Math.max(score, 0.90D);
             strongEvidence = true;
             hardEvidence = true;
         }
-        // 两个相同数字 + 至少一个语义共同点仍视为强匹配，兼容包含年份等情况。
         if (sharedNumbers >= 2 && sharedSemantic >= 1) {
             score = Math.max(score, 0.86D);
             strongEvidence = true;
         }
-        // 一个数字 + 两个核心语义 + 相同行为，也足够强。
         if (sharedNumbers >= 1 && sharedCore >= 2 && sharedActions >= 1) {
             score = Math.max(score, 0.80D);
             strongEvidence = true;
         }
-        // 无数字新闻：至少两个核心实体/短语 + 同一动作。
         if (sharedCore >= 2 && sharedActions >= 1) {
             score = Math.max(score, 0.72D);
         }
-        // 标题几乎改写但字符高度相似时兜底。
         if (charScore >= 0.72D && sharedSemantic >= 2) {
             score = Math.max(score, 0.70D);
         }
 
-        // 只有一个普通词或一个数字绝不能强行聚类；硬数字证据不受此降分影响。
         if (!hardEvidence && sharedCore == 0 && sharedNumbers <= 1 && charScore < 0.55D) {
             score = Math.min(score, 0.36D);
         }
@@ -247,7 +299,6 @@ public class EventFingerprintClusterService {
         Matcher matcher = NUMBER.matcher(text);
         while (matcher.find()) {
             String n = matcher.group(1);
-            // 两位数字噪声很大；只有紧邻“名/岁/元/万/强/号”等上下文时才保留。
             if (n.length() == 2) {
                 int end = matcher.end();
                 int start = matcher.start();
@@ -275,7 +326,6 @@ public class EventFingerprintClusterService {
         if (value == null || value.length() < 3) return false;
         try {
             int number = Integer.parseInt(value);
-            // 年份过于常见，不作为“两个数字即可强匹配”的硬证据。
             return number < 1900 || number > 2099;
         } catch (NumberFormatException e) {
             return false;
@@ -284,23 +334,17 @@ public class EventFingerprintClusterService {
 
     private static Map<String, String> buildSynonyms() {
         Map<String, String> m = new HashMap<>();
-        // 关系
         m.put("舍友", "室友");
         m.put("同寝", "室友");
         m.put("同宿舍", "室友");
-        // 工作
         m.put("离职", "辞职");
         m.put("辞去", "辞职");
-        // 发声/回应
         m.put("发声", "回应");
         m.put("回应称", "回应");
-        // 生死
         m.put("离世", "去世");
         m.put("逝世", "去世");
-        // 执法
         m.put("逮捕", "被捕");
         m.put("抓获", "被捕");
-        // 教育
         m.put("申请退学", "退学");
         return Collections.unmodifiableMap(m);
     }
@@ -321,7 +365,6 @@ public class EventFingerprintClusterService {
         return union == 0 ? 0D : intersection / (double) union;
     }
 
-    /** 对短标题比 Jaccard 更友好：共同核心词占较短标题的比例。 */
     private static double weightedContainment(Set<String> a, Set<String> b) {
         if (a.isEmpty() || b.isEmpty()) return 0D;
         double intersection = 0D;
@@ -414,7 +457,9 @@ public class EventFingerprintClusterService {
         final MatchScore score;
         final boolean accepted;
         ClusterMatch(EventCluster cluster, MatchScore score, boolean accepted) {
-            this.cluster = cluster; this.score = score; this.accepted = accepted;
+            this.cluster = cluster;
+            this.score = score;
+            this.accepted = accepted;
         }
     }
 
@@ -429,7 +474,46 @@ public class EventFingerprintClusterService {
         final double rankConsensus;
         final double confidence;
         EventView(SimilarHotClusterDTO dto, double rankConsensus, double confidence) {
-            this.dto = dto; this.rankConsensus = rankConsensus; this.confidence = confidence;
+            this.dto = dto;
+            this.rankConsensus = rankConsensus;
+            this.confidence = confidence;
+        }
+    }
+
+    private static final class PreClusterResult {
+        final List<EventCluster> hardClusters;
+        final boolean[] assigned;
+        PreClusterResult(List<EventCluster> hardClusters, boolean[] assigned) {
+            this.hardClusters = hardClusters;
+            this.assigned = assigned;
+        }
+    }
+
+    private static final class DisjointSet {
+        final int[] parent;
+        final byte[] rank;
+
+        DisjointSet(int size) {
+            parent = new int[size];
+            rank = new byte[size];
+            for (int i = 0; i < size; i++) parent[i] = i;
+        }
+
+        int find(int x) {
+            if (parent[x] != x) parent[x] = find(parent[x]);
+            return parent[x];
+        }
+
+        void union(int a, int b) {
+            int ra = find(a);
+            int rb = find(b);
+            if (ra == rb) return;
+            if (rank[ra] < rank[rb]) parent[ra] = rb;
+            else if (rank[ra] > rank[rb]) parent[rb] = ra;
+            else {
+                parent[rb] = ra;
+                rank[ra]++;
+            }
         }
     }
 }
