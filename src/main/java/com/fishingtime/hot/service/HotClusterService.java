@@ -10,11 +10,11 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * 聚类门面服务：聚合"聚类 + 严格过滤"，并对结果做 10 分钟 TTL 缓存。
+ * 聚类门面服务：获取热榜快照并计算共同热点，结果缓存 10 分钟。
  *
- * 热榜数据每 10 分钟刷新一次，聚类结果在其间保持稳定；数据刷新后最多滞后一个 TTL 周期，
- * 与平台数据缓存本身可接受的陈旧度一致，故用纯 TTL，不引入刷新主动失效的耦合。
- * 并发：miss 时多线程各自计算 + put，结果确定性、计算廉价，不加锁。
+ * 当前使用 EventFingerprintClusterService（V2 事件指纹算法）。
+ * 旧版 HotSimilarityService + CommonHotRefiner 仍保留在代码中，
+ * 如效果不理想，只需把 getClusters() 中的一行切回旧实现即可。
  */
 @Service
 @RequiredArgsConstructor
@@ -24,6 +24,9 @@ public class HotClusterService {
     private static final long CACHE_TTL_MS = 600_000L;
 
     private final HotService hotService;
+    private final EventFingerprintClusterService eventFingerprintClusterService;
+
+    /** 旧算法仍注入保留，方便随时切回 */
     private final HotSimilarityService hotSimilarityService;
     private final CommonHotRefiner commonHotRefiner;
 
@@ -32,18 +35,23 @@ public class HotClusterService {
             new ConcurrentHashMap<>();
 
     /**
-     * 获取共同热点列表：快照 → 聚类 → 严格过滤，带 10 分钟缓存。
+     * 获取共同热点列表：快照 → V2 事件指纹聚类，带 10 分钟缓存。
      */
     public List<SimilarHotClusterDTO> getClusters() {
-        String key = "similar-clusters";
+        String key = "similar-clusters-v2";
         CacheEntry<List<SimilarHotClusterDTO>> entry = clusterCache.get(key);
         if (entry != null && !entry.isExpired()) {
             return entry.value;
         }
 
         Map<String, List<HotItemDTO>> snapshot = hotService.getAllHotSnapshot();
-        List<SimilarHotClusterDTO> data = commonHotRefiner.refine(
-                hotSimilarityService.cluster(snapshot), snapshot);
+
+        // V2：事件级共同热点识别（当前启用）
+        List<SimilarHotClusterDTO> data = eventFingerprintClusterService.cluster(snapshot);
+
+        // 如需切回旧算法，替换上一行为：
+        // List<SimilarHotClusterDTO> data = commonHotRefiner.refine(
+        //         hotSimilarityService.cluster(snapshot), snapshot);
 
         clusterCache.put(key, new CacheEntry<>(data, CACHE_TTL_MS));
         return data;
@@ -59,7 +67,7 @@ public class HotClusterService {
         return clusterCache.size();
     }
 
-    /** 带 TTL 的缓存条目（复用 WeatherServiceImpl 的惯用法） */
+    /** 带 TTL 的缓存条目 */
     private static final class CacheEntry<T> {
         final T value;
         final long expireAt;
