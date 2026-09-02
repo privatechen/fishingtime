@@ -153,17 +153,23 @@ public class EventFingerprintClusterService {
                 if (s.score > bestMember.score) bestMember = s;
             }
 
-            // 保守聚类：最佳成员负责召回，锚点负责防止链式串簇。
+            // 保守聚类：普通匹配仍要求锚点兜底；硬事件指纹可绕过锚点，避免强证据被中心标题挡住。
             double composite = 0.62D * bestMember.score + 0.38D * anchorScore.score;
             boolean strong = bestMember.strongEvidence;
-            boolean accepted = (composite >= 0.57D && anchorScore.score >= 0.38D)
+            boolean hard = bestMember.hardEvidence || anchorScore.hardEvidence;
+            boolean accepted = hard
+                    || (composite >= 0.57D && anchorScore.score >= 0.38D)
                     || (strong && anchorScore.score >= 0.30D)
                     || anchorScore.strongEvidence;
 
             if (accepted && composite > bestComposite) {
                 bestComposite = composite;
                 bestCluster = cluster;
-                best = new MatchScore(composite, strong || anchorScore.strongEvidence);
+                best = new MatchScore(
+                        composite,
+                        strong || anchorScore.strongEvidence,
+                        hard
+                );
             }
         }
         return bestCluster == null ? null : new ClusterMatch(bestCluster, best, true);
@@ -175,6 +181,7 @@ public class EventFingerprintClusterService {
      */
     private MatchScore eventScore(Candidate a, Candidate b) {
         int sharedNumbers = intersectionSize(a.numbers, b.numbers);
+        int sharedStrongNumbers = strongNumberIntersectionSize(a.numbers, b.numbers);
         int sharedCore = intersectionSize(a.core, b.core);
         int sharedSemantic = intersectionSize(a.semantic, b.semantic);
         int sharedActions = intersectionSize(a.actions, b.actions);
@@ -194,8 +201,16 @@ public class EventFingerprintClusterService {
                 + 0.10D * charScore;
 
         boolean strongEvidence = false;
+        boolean hardEvidence = false;
 
-        // 两个相同数字 + 至少一个语义共同点，是非常强的事件指纹（260/2600 case）。
+        // 两个完全相同、且不是年份的数字实体，本身就是硬事件指纹。
+        // 例如 260 + 2600，不再依赖 Jieba 是否恰好切出共同语义词。
+        if (sharedStrongNumbers >= 2) {
+            score = Math.max(score, 0.90D);
+            strongEvidence = true;
+            hardEvidence = true;
+        }
+        // 两个相同数字 + 至少一个语义共同点仍视为强匹配，兼容包含年份等情况。
         if (sharedNumbers >= 2 && sharedSemantic >= 1) {
             score = Math.max(score, 0.86D);
             strongEvidence = true;
@@ -214,12 +229,12 @@ public class EventFingerprintClusterService {
             score = Math.max(score, 0.70D);
         }
 
-        // 只有一个普通词或一个数字绝不能强行聚类。
-        if (sharedCore == 0 && sharedNumbers <= 1 && charScore < 0.55D) {
+        // 只有一个普通词或一个数字绝不能强行聚类；硬数字证据不受此降分影响。
+        if (!hardEvidence && sharedCore == 0 && sharedNumbers <= 1 && charScore < 0.55D) {
             score = Math.min(score, 0.36D);
         }
 
-        return new MatchScore(Math.min(1D, score), strongEvidence);
+        return new MatchScore(Math.min(1D, score), strongEvidence, hardEvidence);
     }
 
     private String canonical(String token) {
@@ -243,6 +258,28 @@ public class EventFingerprintClusterService {
             result.add(n);
         }
         return result;
+    }
+
+    private static int strongNumberIntersectionSize(Set<String> a, Set<String> b) {
+        if (a.isEmpty() || b.isEmpty()) return 0;
+        int count = 0;
+        Set<String> small = a.size() <= b.size() ? a : b;
+        Set<String> large = a.size() <= b.size() ? b : a;
+        for (String value : small) {
+            if (large.contains(value) && isStrongNumber(value)) count++;
+        }
+        return count;
+    }
+
+    private static boolean isStrongNumber(String value) {
+        if (value == null || value.length() < 3) return false;
+        try {
+            int number = Integer.parseInt(value);
+            // 年份过于常见，不作为“两个数字即可强匹配”的硬证据。
+            return number < 1900 || number > 2099;
+        } catch (NumberFormatException e) {
+            return false;
+        }
     }
 
     private static Map<String, String> buildSynonyms() {
@@ -364,7 +401,12 @@ public class EventFingerprintClusterService {
     private static final class MatchScore {
         final double score;
         final boolean strongEvidence;
-        MatchScore(double score, boolean strongEvidence) { this.score = score; this.strongEvidence = strongEvidence; }
+        final boolean hardEvidence;
+        MatchScore(double score, boolean strongEvidence, boolean hardEvidence) {
+            this.score = score;
+            this.strongEvidence = strongEvidence;
+            this.hardEvidence = hardEvidence;
+        }
     }
 
     private static final class ClusterMatch {
