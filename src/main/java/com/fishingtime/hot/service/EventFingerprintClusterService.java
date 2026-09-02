@@ -45,10 +45,10 @@ public class EventFingerprintClusterService {
         List<Candidate> candidates = buildCandidates(platformData);
         if (candidates.size() < 2) return List.of();
 
-        // 高排名优先作为事件锚点，降低后续聚类中心漂移。
+        // 高排名优先作为事件锚点；同排名时热度高的优先。
         candidates.sort(Comparator
                 .comparingInt((Candidate c) -> safeRank(c.item))
-                .thenComparingInt((Candidate c) -> safeScore(c.item)).reversed());
+                .thenComparing(Comparator.comparingInt((Candidate c) -> safeScore(c.item)).reversed()));
 
         List<EventCluster> clusters = new ArrayList<>();
         for (Candidate candidate : candidates) {
@@ -77,7 +77,7 @@ public class EventFingerprintClusterService {
             List<PlatformHotItemDTO> items = bestPerPlatform.values().stream()
                     .sorted(Comparator
                             .comparingInt((ScoredCandidate x) -> safeRank(x.candidate.item))
-                            .thenComparingDouble((ScoredCandidate x) -> x.score).reversed())
+                            .thenComparing(Comparator.comparingDouble((ScoredCandidate x) -> x.score).reversed()))
                     .limit(3)
                     .map(x -> PlatformHotItemDTO.builder()
                             .platform(x.candidate.platform)
@@ -105,8 +105,8 @@ public class EventFingerprintClusterService {
 
         result.sort(Comparator
                 .comparingInt((EventView x) -> x.dto.getSourceCount()).reversed()
-                .thenComparingDouble((EventView x) -> x.rankConsensus).reversed()
-                .thenComparingDouble((EventView x) -> x.confidence).reversed());
+                .thenComparing(Comparator.comparingDouble((EventView x) -> x.rankConsensus).reversed())
+                .thenComparing(Comparator.comparingDouble((EventView x) -> x.confidence).reversed()));
 
         return result.stream().map(x -> x.dto).limit(10).collect(Collectors.toList());
     }
