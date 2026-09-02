@@ -22,6 +22,7 @@ public class MyGameRecordService {
     private final ExtremeFishingScoreMapper extremeFishingScoreMapper;
     private final DontFillScoreMapper dontFillScoreMapper;
     private final StackTowerScoreMapper stackTowerScoreMapper;
+    private final OneStrokeScoreMapper oneStrokeScoreMapper;
 
     public List<GameRecordDTO> getMyRecords(Long userId) {
         List<GameRecordDTO> list = new ArrayList<>();
@@ -31,6 +32,7 @@ public class MyGameRecordService {
         list.add(buildColorHunter(userId));
         list.add(buildDontFill(userId));
         list.add(buildStackTower(userId));
+        list.add(buildOneStroke(userId));
         list.add(buildFishBreakout(userId));
         list.add(buildExtremeFishing(userId));
         return list;
@@ -75,6 +77,13 @@ public class MyGameRecordService {
         GameRecordDTO dto = new GameRecordDTO(); dto.setGameType("stack-tower");
         StackTowerScore score = stackTowerScoreMapper.selectByUserId(userId);
         if (score != null) { dto.setBestFloor(score.getMaxFloor()); dto.setStackPerfectCount(score.getPerfectCount()); }
+        return dto;
+    }
+
+    private GameRecordDTO buildOneStroke(Long userId) {
+        GameRecordDTO dto = new GameRecordDTO(); dto.setGameType("one-stroke");
+        OneStrokeScore score = oneStrokeScoreMapper.selectByUserId(userId);
+        if (score != null) dto.setOneStrokeMaxLevel(score.getMaxLevel());
         return dto;
     }
 

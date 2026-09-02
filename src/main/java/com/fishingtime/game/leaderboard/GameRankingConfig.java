@@ -36,6 +36,8 @@ public class GameRankingConfig {
         SPECS.put("dont-fill", new Spec("desc", true));
         // 堆塔：层数降序；同层数 Perfect 次数降序。
         SPECS.put("stack-tower", new Spec("desc", true));
+        // 一笔画：最高通关关卡越高越好。
+        SPECS.put("one-stroke", new Spec("desc", false));
     }
 
     private static final Spec DEFAULT = new Spec("desc", false);

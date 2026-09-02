@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.fishingtime.game.mapper.OneStrokeScoreMapper">
+    <resultMap id="oneStrokeScoreMap" type="com.fishingtime.game.domain.OneStrokeScore">
+        <id column="id" property="id"/>
+        <result column="user_id" property="userId"/>
+        <result column="max_level" property="maxLevel"/>
+        <result column="achieved_at" property="achievedAt"/>
+        <result column="created_at" property="createdAt"/>
+        <result column="updated_at" property="updatedAt"/>
+    </resultMap>
+
+    <select id="selectByUserId" resultMap="oneStrokeScoreMap">
+        SELECT * FROM game_one_stroke_score WHERE user_id = #{userId}
+    </select>
+
+    <insert id="insert" parameterType="com.fishingtime.game.domain.OneStrokeScore" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO game_one_stroke_score (user_id, max_level, achieved_at)
+        VALUES (#{userId}, #{maxLevel}, NOW())
+    </insert>
+
+    <update id="updateBest">
+        UPDATE game_one_stroke_score
+        SET max_level = #{level}, achieved_at = NOW()
+        WHERE user_id = #{userId} AND max_level &lt; #{level}
+    </update>
+</mapper>
