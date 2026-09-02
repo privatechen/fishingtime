@@ -33,4 +33,7 @@ public class GameRecordDTO {
 
     /** 堆塔：最高层成绩对应的 Perfect 次数 */
     private Integer stackPerfectCount;
+
+    /** 一笔画：最高通关关卡 */
+    private Integer oneStrokeMaxLevel;
 }
