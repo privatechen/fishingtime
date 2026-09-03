@@ -36,8 +36,7 @@ public class NumberPuzzleController {
         score.setHintCount(dto.getHintCount() == null ? 0 : Math.max(0, dto.getHintCount()));
         mapper.insert(score);
 
-        // Unified log powers Today/My cross-game views. Encode difficulty in secondary score;
-        // the dedicated table remains the source for difficulty-specific puzzle rankings.
+        // Unified score log powers Today/My cross-game views.
         gameScoreLogService.record(currentUser.getUserId(), "number-puzzle", dto.getElapsedMs(), dto.getDifficulty());
         return ApiResponse.success();
     }
@@ -48,8 +47,10 @@ public class NumberPuzzleController {
         return ApiResponse.success(mapper.selectBest(currentUser.getUserId(), difficulty));
     }
 
-    @GetMapping("/leaderboard")
-    public ApiResponse<List<NumberPuzzleRankItemDTO>> leaderboard(@RequestParam Integer difficulty,
+    // Difficulty-specific leaderboard for the number-puzzle game page.
+    // /api/games/number-puzzle/leaderboard is intentionally left to the unified LeaderboardController.
+    @GetMapping("/difficulty-leaderboard")
+    public ApiResponse<List<NumberPuzzleRankItemDTO>> difficultyLeaderboard(@RequestParam Integer difficulty,
             @RequestParam(defaultValue="ALL") String period,
             @RequestParam(defaultValue="1") Integer page,
             @RequestParam(defaultValue="20") Integer pageSize) {
