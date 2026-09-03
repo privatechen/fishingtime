@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.fishingtime.game.mapper.NumberPuzzleScoreMapper">
+  <resultMap id="scoreMap" type="com.fishingtime.game.domain.NumberPuzzleScore">
+    <id column="id" property="id"/><result column="user_id" property="userId"/>
+    <result column="difficulty" property="difficulty"/><result column="elapsed_ms" property="elapsedMs"/>
+    <result column="steps" property="steps"/><result column="hint_count" property="hintCount"/>
+    <result column="created_at" property="createdAt"/>
+  </resultMap>
+  <insert id="insert" parameterType="com.fishingtime.game.domain.NumberPuzzleScore" useGeneratedKeys="true" keyProperty="id">
+    INSERT INTO game_number_puzzle_score(user_id,difficulty,elapsed_ms,steps,hint_count)
+    VALUES(#{userId},#{difficulty},#{elapsedMs},#{steps},#{hintCount})
+  </insert>
+  <select id="selectBest" resultMap="scoreMap">
+    SELECT * FROM game_number_puzzle_score WHERE user_id=#{userId} AND difficulty=#{difficulty}
+    ORDER BY elapsed_ms ASC, steps ASC, created_at ASC LIMIT 1
+  </select>
+  <select id="selectLeaderboard" resultType="com.fishingtime.game.dto.NumberPuzzleRankItemDTO">
+    SELECT s.user_id AS userId, COALESCE(NULLIF(u.nickname,''), u.username, CONCAT('用户',s.user_id)) AS nickname,
+           s.elapsed_ms AS elapsedMs, s.steps, s.hint_count AS hintCount
+    FROM game_number_puzzle_score s
+    LEFT JOIN users u ON u.id=s.user_id
+    WHERE s.difficulty=#{difficulty}
+    <if test="startTime != null">AND s.created_at &gt;= #{startTime}</if>
+      AND NOT EXISTS (
+        SELECT 1 FROM game_number_puzzle_score b
+        WHERE b.user_id=s.user_id AND b.difficulty=s.difficulty
+        <if test="startTime != null">AND b.created_at &gt;= #{startTime}</if>
+          AND (b.elapsed_ms &lt; s.elapsed_ms OR (b.elapsed_ms=s.elapsed_ms AND b.steps &lt; s.steps)
+               OR (b.elapsed_ms=s.elapsed_ms AND b.steps=s.steps AND b.created_at &lt; s.created_at))
+      )
+    ORDER BY s.elapsed_ms ASC, s.steps ASC, s.created_at ASC
+    LIMIT #{offset}, #{limit}
+  </select>
+</mapper>
