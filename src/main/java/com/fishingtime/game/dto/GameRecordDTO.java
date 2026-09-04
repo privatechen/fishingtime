@@ -1,39 +1,19 @@
 package com.fishingtime.game.dto;
 
 import lombok.Data;
-
 import java.math.BigDecimal;
 
-/**
- * 我的游戏成绩 — 聚合各游戏的核心指标（一次返回）
- */
 @Data
 public class GameRecordDTO {
     private String gameType;
-    private Integer bestScore;
-    private Integer maxTile;
-    private BigDecimal bestAccuracy;
-    private Integer maxStreak;
-    private Integer bestFinalTime;
-    private Integer bestActualTime;
-    private Integer lowestErrorCount;
-    private Integer bestClearedPools;
-    private Integer bestReleasedFish;
-    private Integer bestMistakes;
-    private Integer bestDuration;
-    private Integer bestPerfectCount;
-    private Integer bestMaxCombo;
-    private Integer bestPufferMistakes;
-    private Integer bestLevel;
-    private Long bestTime;
-    private Integer bestClearedLines;
-
-    /** 堆塔：最高层数 */
-    private Integer bestFloor;
-
-    /** 堆塔：最高层成绩对应的 Perfect 次数 */
-    private Integer stackPerfectCount;
-
-    /** 一笔画：最高通关关卡 */
-    private Integer oneStrokeMaxLevel;
+    private Integer bestScore; private Integer maxTile; private BigDecimal bestAccuracy; private Integer maxStreak;
+    private Integer bestFinalTime; private Integer bestActualTime; private Integer lowestErrorCount;
+    private Integer bestClearedPools; private Integer bestReleasedFish; private Integer bestMistakes; private Integer bestDuration;
+    private Integer bestPerfectCount; private Integer bestMaxCombo; private Integer bestPufferMistakes;
+    private Integer bestLevel; private Long bestTime; private Integer bestClearedLines;
+    private Integer bestFloor; private Integer stackPerfectCount; private Integer oneStrokeMaxLevel;
+    /** 数字华容道：分别保存三档最佳耗时（毫秒）与对应步数。 */
+    private Integer numberPuzzle3Time; private Integer numberPuzzle3Steps;
+    private Integer numberPuzzle4Time; private Integer numberPuzzle4Steps;
+    private Integer numberPuzzle5Time; private Integer numberPuzzle5Steps;
 }
