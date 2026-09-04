@@ -152,7 +152,7 @@ export interface CommonHotCluster {
 
 /**
  * 全网共同热点：至少两个不同平台命中才由后端返回。
- * 右侧模块只展示前三个热点簇；不展示综合热力值。
+ * API 层保留全部有效热点簇，展示数量由组件控制。
  */
 export async function fetchCommonHot(): Promise<CommonHotCluster[]> {
   const res = await fetch('/api/hot/similar/clusters', { credentials: 'same-origin' })
@@ -160,7 +160,6 @@ export async function fetchCommonHot(): Promise<CommonHotCluster[]> {
   if (json.code === 200 && Array.isArray(json.data)) {
     return json.data
       .filter((cluster: CommonHotCluster) => cluster.sourceCount >= 2 && Array.isArray(cluster.items) && cluster.items.length >= 2)
-      .slice(0, 3)
   }
   throw new Error(json.message || '共同热点加载失败')
 }
