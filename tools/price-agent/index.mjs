@@ -9,15 +9,12 @@ const resultFile = process.env.RESULT_FILE || path.join(root, 'result.json')
 const profileDir = process.env.CHROME_PROFILE_DIR || path.join(root, '.chrome-profile')
 const headless = process.env.HEADLESS === '1'
 
-function sleep(ms) {
-  return new Promise(resolve => setTimeout(resolve, ms))
-}
+function sleep(ms) { return new Promise(resolve => setTimeout(resolve, ms)) }
 
 function normalizeSku(line) {
   const v = line.trim()
   if (!v || v.startsWith('#')) return null
-  const match = v.match(/(\d{5,})/)
-  return match?.[1] || null
+  return v.match(/(\d{5,})/)?.[1] || null
 }
 
 async function readSkus() {
@@ -27,153 +24,88 @@ async function readSkus() {
 
 function toPrice(value) {
   if (value == null) return null
-  const text = String(value).replace(/,/g, '').trim()
-  const match = text.match(/(?:¥|￥)?\s*(\d+(?:\.\d{1,2})?)/)
-  if (!match) return null
-  const n = Number(match[1])
+  const n = Number(String(value).replace(/[¥￥,\s]/g, ''))
   return Number.isFinite(n) && n > 0 && n < 10000000 ? n : null
 }
 
-function searchJsonForPrice(value, sku, depth = 0) {
-  if (depth > 7 || value == null) return null
-  if (Array.isArray(value)) {
-    for (const item of value) {
-      const p = searchJsonForPrice(item, sku, depth + 1)
-      if (p != null) return p
-    }
-    return null
+function findBestPromotion(value, depth = 0) {
+  if (value == null || typeof value !== 'object' || depth > 12) return null
+  if (value.bestPromotion && typeof value.bestPromotion === 'object') {
+    const price = toPrice(value.bestPromotion.purchasePrice)
+    if (price != null) return { price, bestPromotion: value.bestPromotion }
   }
-  if (typeof value !== 'object') return null
-
-  const entries = Object.entries(value)
-  const skuLike = entries.find(([k]) => /sku(id)?|ware(id)?|item(id)?/i.test(k))
-  const objectMatchesSku = !skuLike || String(skuLike[1]).includes(String(sku))
-
-  if (objectMatchesSku) {
-    const preferredKeys = ['price', 'p', 'jdPrice', 'salePrice', 'currentPrice', 'finalPrice', 'realPrice']
-    for (const key of preferredKeys) {
-      if (key in value) {
-        const p = toPrice(value[key])
-        if (p != null) return p
-      }
-    }
-  }
-
-  for (const [, child] of entries) {
-    const p = searchJsonForPrice(child, sku, depth + 1)
-    if (p != null) return p
+  for (const child of Object.values(value)) {
+    const found = findBestPromotion(child, depth + 1)
+    if (found) return found
   }
   return null
 }
 
 async function extractDomPrice(page) {
-  const selectors = [
-    '.summary-price .p-price .price',
-    '.summary-price .p-price',
-    '.p-price .price',
-    '.p-price',
-    '[class*="price"] [class*="price"]',
-    '[class*="Price"]',
-    '[class*="price"]'
-  ]
-
-  for (const selector of selectors) {
-    const loc = page.locator(selector).filter({ visible: true }).first()
+  for (const selector of ['.summary-price .p-price .price', '.p-price .price', '.p-price']) {
     try {
+      const loc = page.locator(selector).first()
       if (await loc.count()) {
-        const text = (await loc.innerText({ timeout: 800 })).trim()
-        const p = toPrice(text)
-        if (p != null) return { price: p, source: `dom:${selector}`, raw: text }
+        const raw = (await loc.innerText({ timeout: 800 })).trim()
+        const price = toPrice(raw)
+        if (price != null) return { price, source: `dom:${selector}`, raw }
       }
     } catch {}
   }
-
-  try {
-    const bodyText = await page.locator('body').innerText({ timeout: 1500 })
-    const lines = bodyText.split(/\r?\n/).map(s => s.trim()).filter(Boolean)
-    const labels = ['京东价', '秒杀价', '到手价', '售价', '价格']
-    for (let i = 0; i < lines.length; i++) {
-      if (labels.some(label => lines[i].includes(label))) {
-        for (const candidate of lines.slice(i, i + 4)) {
-          const p = toPrice(candidate)
-          if (p != null) return { price: p, source: 'dom:text-near-price-label', raw: candidate }
-        }
-      }
-    }
-  } catch {}
-
   return null
 }
 
 async function collectSku(page, sku) {
   const url = `https://item.jd.com/${sku}.html`
-  let networkHit = null
-  const networkCandidates = []
+  let wareBusinessHit = null
+  let wareBusinessSeen = false
 
   const onResponse = async response => {
     const responseUrl = response.url()
-    if (!/price|pprice|sku|ware|item|goods/i.test(responseUrl)) return
-    if (networkCandidates.length < 20) networkCandidates.push(responseUrl)
+    if (!responseUrl.includes('api.m.jd.com/')) return
+    if (!responseUrl.includes('functionId=pc_detailpage_wareBusiness')) return
+    wareBusinessSeen = true
     try {
-      const type = response.headers()['content-type'] || ''
-      if (!type.includes('json') && !type.includes('javascript') && !type.includes('text')) return
-      const text = await response.text()
-      if (!text || text.length > 2_000_000) return
-      let data = null
-      try {
-        data = JSON.parse(text)
-      } catch {
-        const jsonMatch = text.match(/^[^(]*\((\{.*\}|\[.*\])\)\s*;?$/s)
-        if (jsonMatch) {
-          try { data = JSON.parse(jsonMatch[1]) } catch {}
+      const data = await response.json()
+      const found = findBestPromotion(data)
+      if (found && !wareBusinessHit) {
+        wareBusinessHit = {
+          price: found.price,
+          source: 'network:pc_detailpage_wareBusiness.bestPromotion.purchasePrice',
+          bestPromotion: found.bestPromotion,
+          responseUrl
         }
       }
-      if (data != null) {
-        const price = searchJsonForPrice(data, sku)
-        if (price != null && !networkHit) {
-          networkHit = { price, source: `network:${responseUrl}` }
-        }
-      }
-    } catch {}
+    } catch (e) {
+      console.warn(`\n  wareBusiness 响应解析失败: ${e instanceof Error ? e.message : String(e)}`)
+    }
   }
 
   page.on('response', onResponse)
   const startedAt = new Date().toISOString()
-  let title = ''
-  let error = null
-
   try {
     await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30000 })
-    await page.waitForTimeout(3500)
-    title = await page.title().catch(() => '')
-    const dom = await extractDomPrice(page)
-    const hit = networkHit || dom
+    // 给 pc_detailpage_wareBusiness 留出返回时间。
+    for (let i = 0; i < 20 && !wareBusinessHit; i++) await page.waitForTimeout(250)
+
+    const title = await page.title().catch(() => '')
+    const dom = wareBusinessHit ? null : await extractDomPrice(page)
+    const hit = wareBusinessHit || dom
     return {
-      sku,
-      url,
-      title,
+      sku, url, title,
       price: hit?.price ?? null,
       source: hit?.source ?? null,
-      raw: dom?.raw ?? null,
-      checkedAt: new Date().toISOString(),
-      startedAt,
-      networkCandidates,
+      checkedAt: new Date().toISOString(), startedAt,
+      wareBusinessSeen,
+      bestPromotion: wareBusinessHit?.bestPromotion ?? null,
       ok: !!hit
     }
   } catch (e) {
-    error = e instanceof Error ? e.message : String(e)
     return {
-      sku,
-      url,
-      title,
-      price: null,
-      source: null,
-      raw: null,
-      checkedAt: new Date().toISOString(),
-      startedAt,
-      networkCandidates,
-      ok: false,
-      error
+      sku, url, title: '', price: null, source: null,
+      checkedAt: new Date().toISOString(), startedAt,
+      wareBusinessSeen, bestPromotion: null, ok: false,
+      error: e instanceof Error ? e.message : String(e)
     }
   } finally {
     page.off('response', onResponse)
@@ -182,23 +114,17 @@ async function collectSku(page, sku) {
 
 async function main() {
   const skus = await readSkus()
-  if (!skus.length) {
-    console.log('skus.txt 里没有可用 SKU。')
-    process.exit(1)
-  }
+  if (!skus.length) throw new Error('skus.txt 里没有可用 SKU。')
 
-  console.log(`Price Agent v0.1 — 共 ${skus.length} 个 SKU`)
-  console.log(`本地浏览器档案: ${profileDir}`)
-  console.log('首次运行如果京东未登录，请在打开的 Chrome 里手动登录一次。登录态会保存在本地档案中。')
+  console.log(`Price Agent v0.2 — 共 ${skus.length} 个 SKU`)
+  console.log(`Chrome 登录档案: ${profileDir}`)
+  console.log('首次运行请在 Agent 打开的 Chrome 中登录京东；以后会复用这个登录态。')
 
   const context = await chromium.launchPersistentContext(profileDir, {
-    channel: 'chrome',
-    headless,
-    viewport: { width: 1440, height: 1000 },
-    locale: 'zh-CN',
+    channel: 'chrome', headless,
+    viewport: { width: 1440, height: 1000 }, locale: 'zh-CN',
     args: ['--start-maximized']
   })
-
   const page = context.pages()[0] || await context.newPage()
   const results = []
 
@@ -207,35 +133,18 @@ async function main() {
     process.stdout.write(`[${i + 1}/${skus.length}] ${sku} ... `)
     const result = await collectSku(page, sku)
     results.push(result)
-    if (result.ok) console.log(`¥${result.price} (${result.source})`)
-    else console.log('未识别到价格')
-
-    if (i < skus.length - 1) {
-      const wait = 2500 + Math.floor(Math.random() * 2500)
-      await sleep(wait)
-    }
+    console.log(result.ok ? `¥${result.price} (${result.source})` : `未识别到价格${result.wareBusinessSeen ? '（已捕获 wareBusiness，但未找到 purchasePrice）' : '（未捕获 wareBusiness）'}`)
+    if (i < skus.length - 1) await sleep(2500 + Math.floor(Math.random() * 2500))
   }
 
   const output = {
-    generatedAt: new Date().toISOString(),
-    host: os.hostname(),
-    count: results.length,
-    success: results.filter(x => x.ok).length,
-    results
+    generatedAt: new Date().toISOString(), host: os.hostname(),
+    count: results.length, success: results.filter(x => x.ok).length, results
   }
   await fs.writeFile(resultFile, JSON.stringify(output, null, 2), 'utf8')
-  console.log(`\n完成：${output.success}/${output.count} 个 SKU 获取到价格`)
-  console.log(`结果文件：${resultFile}`)
-
-  if (process.env.KEEP_OPEN === '1') {
-    console.log('KEEP_OPEN=1，浏览器保持打开；Ctrl+C 结束。')
-    await new Promise(() => {})
-  } else {
-    await context.close()
-  }
+  console.log(`\n完成：${output.success}/${output.count}；结果：${resultFile}`)
+  if (process.env.KEEP_OPEN === '1') await new Promise(() => {})
+  await context.close()
 }
 
-main().catch(err => {
-  console.error(err)
-  process.exit(1)
-})
+main().catch(err => { console.error(err); process.exit(1) })
