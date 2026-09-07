@@ -95,6 +95,10 @@ function removeItem(id: number) {
   savePrototypeData()
 }
 
+function scrollToTop() {
+  globalThis.window?.scrollTo({ top: 0, behavior: 'smooth' })
+}
+
 onMounted(async () => {
   await checkAdmin()
   if (isAdmin.value) loadPrototypeData()
@@ -189,7 +193,7 @@ onMounted(async () => {
             <div class="box-icon">▱</div>
             <h3>还没有监控商品</h3>
             <p>快去添加一个商品链接吧，我帮你盯价格！</p>
-            <button class="primary-btn small-btn" @click="window?.scrollTo?.({ top: 0, behavior: 'smooth' })">＋ 添加商品</button>
+            <button class="primary-btn small-btn" @click="scrollToTop">＋ 添加商品</button>
           </div>
 
           <div v-else class="watch-list">
