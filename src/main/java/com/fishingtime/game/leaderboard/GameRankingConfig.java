@@ -17,6 +17,8 @@ public class GameRankingConfig {
         SPECS.put("fish-breakout",new Spec("desc",true)); SPECS.put("extreme-fishing",new Spec("desc",false));
         SPECS.put("detail",new Spec("desc",true)); SPECS.put("dont-fill",new Spec("desc",true));
         SPECS.put("stack-tower",new Spec("desc",true)); SPECS.put("one-stroke",new Spec("desc",false));
+        // “过不了4关”：过关数越多越好，同过关数时最长连对越多越好。
+        SPECS.put("memory",new Spec("desc",true));
         // Number puzzle primary score is elapsed milliseconds: lower is better.
         SPECS.put("number-puzzle",new Spec("asc",false));
     }
