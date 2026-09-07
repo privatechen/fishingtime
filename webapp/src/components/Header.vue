@@ -27,7 +27,6 @@ async function handleLogout() {
   router.push('/')
 }
 
-// 登录态变化时刷新「是否管理员」（管理入口按普通登录账号判断）
 watch(isLoggedIn, () => void checkAdmin())
 
 onMounted(() => {
@@ -40,13 +39,11 @@ onUnmounted(() => window.removeEventListener('scroll', handleScroll))
 <template>
   <header class="header" :class="{ scrolled }">
     <div class="header-inner">
-      <!-- Logo -->
       <router-link to="/" class="logo">
         <img :src="fishLogo" alt="FishingTime" class="logo-img" />
         <span>FishingTime</span>
       </router-link>
 
-      <!-- Navigation -->
       <nav class="nav">
         <router-link
           v-for="item in navItems"
@@ -57,11 +54,10 @@ onUnmounted(() => window.removeEventListener('scroll', handleScroll))
         >
           {{ item.name }}
         </router-link>
-        <!-- 管理入口：管理后台登录后显示 -->
-        <router-link v-if="isAdmin" to="/admin/game" class="nav-link">管理</router-link>
+        <router-link v-if="isAdmin" to="/admin/game" class="nav-link" :class="{ active: route.path.startsWith('/admin') }">管理</router-link>
+        <router-link v-if="isAdmin" to="/price-watch" class="nav-link price-watch-nav" :class="{ active: route.path === '/price-watch' }">比价</router-link>
       </nav>
 
-      <!-- Right -->
       <div class="header-right">
         <div class="search-box">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -71,13 +67,11 @@ onUnmounted(() => window.removeEventListener('scroll', handleScroll))
           <input type="text" placeholder="搜索感兴趣的内容..." />
         </div>
 
-        <!-- 已登录 -->
         <template v-if="isLoggedIn">
           <router-link to="/profile" class="header-nickname">{{ user?.nickname }}</router-link>
           <button class="btn btn-outline" @click="handleLogout">退出</button>
         </template>
 
-        <!-- 未登录 -->
         <template v-else>
           <router-link to="/login" class="btn btn-outline">登录</router-link>
           <router-link to="/register" class="btn btn-primary">注册</router-link>
@@ -98,5 +92,9 @@ onUnmounted(() => window.removeEventListener('scroll', handleScroll))
 
 .header-nickname:hover {
   color: var(--color-primary);
+}
+
+.price-watch-nav.active {
+  color: #ff681c;
 }
 </style>
