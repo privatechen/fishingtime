@@ -12,6 +12,8 @@ public class GameRecordDTO {
     private Integer bestPerfectCount; private Integer bestMaxCombo; private Integer bestPufferMistakes;
     private Integer bestLevel; private Long bestTime; private Integer bestClearedLines;
     private Integer bestFloor; private Integer stackPerfectCount; private Integer oneStrokeMaxLevel;
+    /** 过不了4关：历史最多过关数、该最佳记录的最长连对、最高到达难度。 */
+    private Integer memoryBestPassedCount; private Integer memoryBestStreak; private Integer memoryMaxStage;
     /** 数字华容道：分别保存三档最佳耗时（毫秒）与对应步数。 */
     private Integer numberPuzzle3Time; private Integer numberPuzzle3Steps;
     private Integer numberPuzzle4Time; private Integer numberPuzzle4Steps;
