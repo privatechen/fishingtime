@@ -1,36 +1,49 @@
-# FishingTime Price Agent v0.1
+# FishingTime Price Agent（Python）
 
-这是一个完全独立于 FishingTime 主业务的本地价格探针，用于验证：**能否利用本机 Chrome 的京东登录态，批量读取 SKU 当前显示价格。**
+这是一个独立于 FishingTime 主业务的本地价格探针，用于验证：**能否利用本机 Chrome 的京东登录态，批量读取 SKU 当前价格。**
 
-当前版本不会调用 FishingTime 后端，也不会上传 Cookie、账号密码或浏览器存储。它只在本机打开京东商品页，尝试从浏览器 Network 响应和页面 DOM 中提取价格，并把结果写到 `result.json`。
+当前版本不会调用 FishingTime 后端，也不会上传 Cookie、账号密码或浏览器存储。它只在本机打开京东商品页，监听浏览器网络响应，并优先读取：
+
+```text
+https://api.m.jd.com/?functionId=pc_detailpage_wareBusiness
+```
+
+响应 JSON 中的：
+
+```text
+bestPromotion.purchasePrice
+```
+
+如果该接口没有拿到价格，会再尝试页面 DOM 作为兜底。
 
 ## 1. 环境
 
-- Node.js 18+
+- Python 3.10+
 - 本机已安装 Google Chrome
 
 ## 2. 安装
 
 ```bash
 cd tools/price-agent
-npm install
+python -m pip install -r requirements.txt
+python -m playwright install
 ```
 
-Playwright 会作为控制层使用，但实际启动的是你电脑上安装的 Chrome（`channel: chrome`）。
+实际运行时指定 `channel="chrome"`，因此启动的是你电脑本机安装的 Chrome。
 
 ## 3. 填 SKU
 
 编辑 `skus.txt`，一行一个：
 
 ```text
+5634161
 100012345678
-100076543210
 ```
 
 也可以直接写京东商品链接：
 
 ```text
-https://item.jd.com/100012345678.html
+https://item.jd.com/5634161.html
 ```
 
 程序会自动提取 SKU。
@@ -38,7 +51,7 @@ https://item.jd.com/100012345678.html
 ## 4. 运行
 
 ```bash
-npm start
+python main.py
 ```
 
 首次启动会创建本地专用浏览器档案：
@@ -47,9 +60,9 @@ npm start
 .chrome-profile/
 ```
 
-如果打开京东后显示未登录，请在这个 Chrome 窗口里手动登录一次。之后再运行 Agent，会复用这份本地登录态。
+如果打开京东后显示未登录，请在这个 Chrome 窗口里手动登录一次。之后再次运行 Agent，会继续复用这份登录态。
 
-> 这里故意不直接读取你日常 Chrome 的 Default Profile，避免 Chrome Profile 锁、数据损坏以及直接操作你的主浏览器档案。
+这里故意不直接读取你日常 Chrome 的 Default Profile，避免浏览器 Profile 锁以及误操作主浏览器数据。
 
 ## 5. 输出
 
@@ -59,43 +72,64 @@ npm start
 result.json
 ```
 
-示例：
+成功时类似：
 
 ```json
 {
-  "sku": "100012345678",
-  "price": 2399,
-  "source": "dom:.p-price .price",
+  "sku": "5634161",
+  "price": 39.9,
+  "source": "network:pc_detailpage_wareBusiness.bestPromotion.purchasePrice",
+  "wareBusinessSeen": true,
   "ok": true
 }
 ```
 
-如果价格来自浏览器网络响应，`source` 会以 `network:` 开头。
+如果显示：
 
-如果拿不到价格，结果里会保留本次页面加载过程中命中的若干 `networkCandidates`，方便下一步定位京东真实的价格请求。
+```text
+已捕获 wareBusiness，但未找到 purchasePrice
+```
 
-## 6. 当前提取策略
+说明接口已经监听到了，只是返回结构和当前解析规则不一致。
 
-按优先级：
+如果显示：
 
-1. 监听浏览器 Network Response，筛选 URL 中包含 `price / sku / ware / item / goods` 的响应，再递归寻找价格字段。
-2. Network 未拿到时，尝试京东常见价格 DOM 选择器。
-3. 最后从页面正文中，在“京东价 / 秒杀价 / 到手价 / 售价 / 价格”附近寻找金额。
+```text
+未捕获 wareBusiness
+```
 
-这只是 PoC，不保证适配京东当前所有页面。第一轮目的就是拿真实页面跑一遍，确定价格到底来自哪个响应或 DOM，再把提取逻辑收紧。
+说明当前商品页加载过程中没有监听到目标接口，需要继续看浏览器实际请求。
 
-## 7. 调试
+## 6. 调试
 
-想让浏览器执行完后保持打开：
+让浏览器执行完后保持打开：
+
+macOS / Linux：
 
 ```bash
-KEEP_OPEN=1 npm start
+KEEP_OPEN=1 python main.py
+```
+
+Windows PowerShell：
+
+```powershell
+$env:KEEP_OPEN="1"
+python main.py
 ```
 
 无头运行：
 
+macOS / Linux：
+
 ```bash
-HEADLESS=1 npm start
+HEADLESS=1 python main.py
 ```
 
-如果某个 SKU 获取失败，把对应 `result.json` 中这一项（尤其是 `networkCandidates`）发出来，就可以继续针对当前京东页面调整解析逻辑。
+Windows PowerShell：
+
+```powershell
+$env:HEADLESS="1"
+python main.py
+```
+
+当前仍然是 PoC。第一步建议只在 `skus.txt` 放 `5634161`，先确认本机登录状态下可以稳定捕获 `pc_detailpage_wareBusiness` 并读取 `bestPromotion.purchasePrice`。
