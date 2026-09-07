@@ -9,6 +9,7 @@ import com.fishingtime.game.mapper.DetailScoreMapper;
 import com.fishingtime.game.mapper.FishBreakoutScoreMapper;
 import com.fishingtime.game.mapper.Game2048ScoreMapper;
 import com.fishingtime.game.mapper.GameScoreMapper;
+import com.fishingtime.game.mapper.MemoryScoreMapper;
 import com.fishingtime.game.mapper.StackTowerScoreMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -40,6 +41,7 @@ public class LeaderboardService {
     private final DetailScoreMapper detailScoreMapper;
     private final DontFillScoreMapper dontFillScoreMapper;
     private final StackTowerScoreMapper stackTowerScoreMapper;
+    private final MemoryScoreMapper memoryScoreMapper;
 
     public LeaderboardDTO getLeaderboard(String gameCode, String period, int page, int pageSize, Long userId) {
         if (!config.isKnown(gameCode)) throw new IllegalArgumentException("未知游戏: " + gameCode);
@@ -144,6 +146,7 @@ public class LeaderboardService {
             case "detail": return detailScoreMapper.selectAllRank();
             case "dont-fill": return dontFillScoreMapper.selectAllRank();
             case "stack-tower": return stackTowerScoreMapper.selectAllRank();
+            case "memory": return memoryScoreMapper.selectAllRank();
             default: throw new IllegalArgumentException("未知游戏: " + gameCode);
         }
     }
