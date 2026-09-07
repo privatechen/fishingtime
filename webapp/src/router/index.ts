@@ -74,6 +74,11 @@ const router = createRouter({
       name: 'adminGame',
       component: () => import('@/views/AdminGameView.vue'),
     },
+    {
+      path: '/price-watch',
+      name: 'priceWatch',
+      component: () => import('@/features/price-watch/PriceWatchView.vue'),
+    },
   ],
 })
 
