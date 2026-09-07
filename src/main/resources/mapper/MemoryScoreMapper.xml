@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.fishingtime.game.mapper.MemoryScoreMapper">
+
+    <resultMap id="memoryScoreMap" type="com.fishingtime.game.domain.MemoryScore">
+        <id column="id" property="id"/>
+        <result column="user_id" property="userId"/>
+        <result column="best_passed_count" property="bestPassedCount"/>
+        <result column="best_streak" property="bestStreak"/>
+        <result column="max_stage" property="maxStage"/>
+        <result column="achieved_at" property="achievedAt"/>
+        <result column="created_at" property="createdAt"/>
+        <result column="updated_at" property="updatedAt"/>
+    </resultMap>
+
+    <select id="selectByUserId" resultMap="memoryScoreMap">
+        SELECT * FROM game_memory_score WHERE user_id = #{userId}
+    </select>
+
+    <insert id="insert" parameterType="com.fishingtime.game.domain.MemoryScore"
+            useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO game_memory_score
+            (user_id, best_passed_count, best_streak, max_stage, achieved_at)
+        VALUES
+            (#{userId}, #{bestPassedCount}, #{bestStreak}, #{maxStage}, NOW())
+    </insert>
+
+    <!-- 更优规则：过关数更多；或过关数相同且最长连对更多。 -->
+    <update id="updateBest">
+        UPDATE game_memory_score
+        SET best_passed_count = #{dto.passedCount},
+            best_streak = COALESCE(#{dto.bestStreak}, 0),
+            max_stage = #{maxStage},
+            achieved_at = NOW()
+        WHERE user_id = #{userId}
+          AND (
+            best_passed_count &lt; #{dto.passedCount}
+            OR (best_passed_count = #{dto.passedCount}
+                AND best_streak &lt; COALESCE(#{dto.bestStreak}, 0))
+          )
+    </update>
+
+    <select id="selectAllRank" resultType="java.util.HashMap">
+        SELECT
+            s.user_id AS userId,
+            u.nickname AS nickname,
+            s.best_passed_count AS score,
+            s.best_streak AS secondaryScore
+        FROM game_memory_score s
+        LEFT JOIN user u ON u.id = s.user_id
+        ORDER BY s.best_passed_count DESC, s.best_streak DESC, s.achieved_at ASC, u.nickname ASC
+    </select>
+</mapper>
