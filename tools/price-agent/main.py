@@ -13,10 +13,7 @@ from playwright.async_api import async_playwright, Page, Response
 ROOT = Path(__file__).resolve().parent
 SKU_FILE = Path(os.getenv("SKU_FILE", ROOT / "skus.txt"))
 RESULT_FILE = Path(os.getenv("RESULT_FILE", ROOT / "result.json"))
-PROFILE_DIR = Path(os.getenv("CHROME_PROFILE_DIR", ROOT / ".chrome-profile"))
-HEADLESS = os.getenv("HEADLESS") == "1"
-KEEP_OPEN = os.getenv("KEEP_OPEN") == "1"
-
+CDP_URL = os.getenv("CDP_URL", "http://127.0.0.1:9222")
 WARE_BUSINESS_FUNCTION = "pc_detailpage_wareBusiness"
 
 
@@ -34,8 +31,7 @@ def normalize_sku(line: str) -> Optional[str]:
 
 def read_skus() -> list[str]:
     text = SKU_FILE.read_text(encoding="utf-8")
-    result: list[str] = []
-    seen: set[str] = set()
+    result, seen = [], set()
     for line in text.splitlines():
         sku = normalize_sku(line)
         if sku and sku not in seen:
@@ -77,12 +73,7 @@ def find_best_promotion(value: Any, depth: int = 0) -> Optional[dict[str, Any]]:
 
 
 async def extract_dom_price(page: Page) -> Optional[dict[str, Any]]:
-    selectors = [
-        ".summary-price .p-price .price",
-        ".p-price .price",
-        ".p-price",
-    ]
-    for selector in selectors:
+    for selector in [".summary-price .p-price .price", ".p-price .price", ".p-price"]:
         try:
             locator = page.locator(selector).first
             if await locator.count():
@@ -104,11 +95,8 @@ async def collect_sku(page: Page, sku: str) -> dict[str, Any]:
     async def on_response(response: Response) -> None:
         nonlocal ware_business_seen, ware_business_hit
         response_url = response.url
-        if "api.m.jd.com/" not in response_url:
+        if "api.m.jd.com/" not in response_url or f"functionId={WARE_BUSINESS_FUNCTION}" not in response_url:
             return
-        if f"functionId={WARE_BUSINESS_FUNCTION}" not in response_url:
-            return
-
         ware_business_seen = True
         try:
             data = await response.json()
@@ -124,50 +112,31 @@ async def collect_sku(page: Page, sku: str) -> dict[str, Any]:
             print(f"\n  wareBusiness 响应解析失败: {exc}")
 
     page.on("response", on_response)
-
     try:
         await page.goto(url, wait_until="domcontentloaded", timeout=30_000)
-
-        # 等待目标接口返回，最多约 5 秒。
-        for _ in range(20):
+        for _ in range(24):
             if ware_business_hit is not None:
                 break
             await page.wait_for_timeout(250)
 
-        title = ""
-        try:
-            title = await page.title()
-        except Exception:
-            pass
-
+        title = await page.title()
         dom_hit = None if ware_business_hit else await extract_dom_price(page)
         hit = ware_business_hit or dom_hit
-
         return {
-            "sku": sku,
-            "url": url,
-            "title": title,
+            "sku": sku, "url": url, "title": title,
             "price": hit.get("price") if hit else None,
             "source": hit.get("source") if hit else None,
-            "checkedAt": now_iso(),
-            "startedAt": started_at,
+            "checkedAt": now_iso(), "startedAt": started_at,
             "wareBusinessSeen": ware_business_seen,
             "bestPromotion": ware_business_hit.get("bestPromotion") if ware_business_hit else None,
             "ok": bool(hit),
         }
     except Exception as exc:
         return {
-            "sku": sku,
-            "url": url,
-            "title": "",
-            "price": None,
-            "source": None,
-            "checkedAt": now_iso(),
-            "startedAt": started_at,
-            "wareBusinessSeen": ware_business_seen,
-            "bestPromotion": None,
-            "ok": False,
-            "error": str(exc),
+            "sku": sku, "url": url, "title": "", "price": None, "source": None,
+            "checkedAt": now_iso(), "startedAt": started_at,
+            "wareBusinessSeen": ware_business_seen, "bestPromotion": None,
+            "ok": False, "error": str(exc),
         }
     finally:
         page.remove_listener("response", on_response)
@@ -178,20 +147,20 @@ async def main() -> None:
     if not skus:
         raise RuntimeError("skus.txt 里没有可用 SKU")
 
-    print(f"Price Agent Python v0.1 — 共 {len(skus)} 个 SKU")
-    print(f"Chrome 登录档案: {PROFILE_DIR}")
-    print("首次运行请在 Agent 打开的 Chrome 中登录京东；以后会复用这个登录态。")
+    print(f"Price Agent Python v0.2 — 共 {len(skus)} 个 SKU")
+    print(f"连接现有 Chrome: {CDP_URL}")
 
     async with async_playwright() as p:
-        context = await p.chromium.launch_persistent_context(
-            user_data_dir=str(PROFILE_DIR),
-            channel="chrome",
-            headless=HEADLESS,
-            viewport={"width": 1440, "height": 1000},
-            locale="zh-CN",
-            args=["--start-maximized"],
-        )
+        try:
+            browser = await p.chromium.connect_over_cdp(CDP_URL)
+        except Exception as exc:
+            raise RuntimeError(
+                f"无法连接 Chrome {CDP_URL}。请先用 --remote-debugging-port=9222 启动 Chrome。\n原始错误: {exc}"
+            ) from exc
 
+        if not browser.contexts:
+            raise RuntimeError("已连接 Chrome，但没有可用浏览器上下文")
+        context = browser.contexts[0]
         page = context.pages[0] if context.pages else await context.new_page()
         results: list[dict[str, Any]] = []
 
@@ -199,32 +168,23 @@ async def main() -> None:
             print(f"[{index}/{len(skus)}] {sku} ... ", end="", flush=True)
             result = await collect_sku(page, sku)
             results.append(result)
-
             if result["ok"]:
                 print(f"¥{result['price']} ({result['source']})")
             elif result["wareBusinessSeen"]:
                 print("未识别到价格（已捕获 wareBusiness，但未找到 purchasePrice）")
             else:
                 print("未识别到价格（未捕获 wareBusiness）")
-
             if index < len(skus):
                 await asyncio.sleep(random.uniform(2.5, 5.0))
 
         output = {
-            "generatedAt": now_iso(),
-            "host": socket.gethostname(),
-            "count": len(results),
-            "success": sum(1 for item in results if item["ok"]),
+            "generatedAt": now_iso(), "host": socket.gethostname(),
+            "count": len(results), "success": sum(1 for item in results if item["ok"]),
             "results": results,
         }
         RESULT_FILE.write_text(json.dumps(output, ensure_ascii=False, indent=2), encoding="utf-8")
         print(f"\n完成：{output['success']}/{output['count']}；结果：{RESULT_FILE}")
-
-        if KEEP_OPEN:
-            print("KEEP_OPEN=1，浏览器保持打开；Ctrl+C 结束。")
-            await asyncio.Event().wait()
-        else:
-            await context.close()
+        print("Chrome 保持打开，Agent 不会关闭你手动启动的浏览器。")
 
 
 if __name__ == "__main__":
