@@ -19,7 +19,7 @@ public interface PriceWatchMapper {
     int insert(PriceWatchInsertParam param);
 
     @Select("SELECT pw.id AS watchId, pw.platform AS platform, jp.sku_id AS skuId, " +
-            "jp.product_url AS productUrl, pw.purchase_price AS purchasePrice, " +
+            "jp.product_url AS productUrl, jp.image_url AS imageUrl, pw.purchase_price AS purchasePrice, " +
             "pw.start_at AS startAt, pw.end_at AS endAt, pw.status AS status, " +
             "jp.status AS productStatus " +
             "FROM price_watch pw JOIN jd_product jp ON jp.id = pw.product_id " +
@@ -53,6 +53,7 @@ public interface PriceWatchMapper {
         private String platform;
         private String skuId;
         private String productUrl;
+        private String imageUrl;
         private BigDecimal purchasePrice;
         private LocalDateTime startAt;
         private LocalDateTime endAt;
@@ -67,6 +68,8 @@ public interface PriceWatchMapper {
         public void setSkuId(String skuId) { this.skuId = skuId; }
         public String getProductUrl() { return productUrl; }
         public void setProductUrl(String productUrl) { this.productUrl = productUrl; }
+        public String getImageUrl() { return imageUrl; }
+        public void setImageUrl(String imageUrl) { this.imageUrl = imageUrl; }
         public BigDecimal getPurchasePrice() { return purchasePrice; }
         public void setPurchasePrice(BigDecimal purchasePrice) { this.purchasePrice = purchasePrice; }
         public LocalDateTime getStartAt() { return startAt; }
