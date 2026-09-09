@@ -18,6 +18,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -98,7 +99,7 @@ public class PriceWatchService {
                         .endAt(row.getEndAt())
                         .status(row.getStatus())
                         .build())
-                .toList();
+                .collect(Collectors.toList());
     }
 
     private int calculateWatchDays(LocalDateTime startAt, LocalDateTime endAt) {
