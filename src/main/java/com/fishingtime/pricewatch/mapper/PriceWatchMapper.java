@@ -5,6 +5,7 @@ import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Options;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
+import org.apache.ibatis.annotations.Update;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -23,8 +24,12 @@ public interface PriceWatchMapper {
             "pw.start_at AS startAt, pw.end_at AS endAt, pw.status AS status, " +
             "jp.status AS productStatus " +
             "FROM price_watch pw JOIN jd_product jp ON jp.id = pw.product_id " +
-            "WHERE pw.user_id = #{userId} ORDER BY pw.start_at DESC, pw.id DESC")
+            "WHERE pw.user_id = #{userId} AND pw.status = 1 " +
+            "ORDER BY pw.start_at DESC, pw.id DESC")
     List<PriceWatchListRow> findByUserId(@Param("userId") Long userId);
+
+    @Update("UPDATE price_watch SET status = 0 WHERE id = #{watchId} AND user_id = #{userId} AND status = 1")
+    int disableByUser(@Param("watchId") Long watchId, @Param("userId") Long userId);
 
     class PriceWatchInsertParam {
         private Long id;
