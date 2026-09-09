@@ -20,7 +20,8 @@ public interface PriceWatchMapper {
 
     @Select("SELECT pw.id AS watchId, pw.platform AS platform, jp.sku_id AS skuId, " +
             "jp.product_url AS productUrl, pw.purchase_price AS purchasePrice, " +
-            "pw.start_at AS startAt, pw.end_at AS endAt, pw.status AS status " +
+            "pw.start_at AS startAt, pw.end_at AS endAt, pw.status AS status, " +
+            "jp.status AS productStatus " +
             "FROM price_watch pw JOIN jd_product jp ON jp.id = pw.product_id " +
             "WHERE pw.user_id = #{userId} ORDER BY pw.start_at DESC, pw.id DESC")
     List<PriceWatchListRow> findByUserId(@Param("userId") Long userId);
@@ -56,6 +57,7 @@ public interface PriceWatchMapper {
         private LocalDateTime startAt;
         private LocalDateTime endAt;
         private Integer status;
+        private Integer productStatus;
 
         public Long getWatchId() { return watchId; }
         public void setWatchId(Long watchId) { this.watchId = watchId; }
@@ -73,5 +75,7 @@ public interface PriceWatchMapper {
         public void setEndAt(LocalDateTime endAt) { this.endAt = endAt; }
         public Integer getStatus() { return status; }
         public void setStatus(Integer status) { this.status = status; }
+        public Integer getProductStatus() { return productStatus; }
+        public void setProductStatus(Integer productStatus) { this.productStatus = productStatus; }
     }
 }
