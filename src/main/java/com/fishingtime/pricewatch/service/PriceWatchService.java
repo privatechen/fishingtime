@@ -105,6 +105,21 @@ public class PriceWatchService {
                 .collect(Collectors.toList());
     }
 
+    @Transactional
+    public void remove(Long userId, Long watchId) {
+        if (userId == null) {
+            throw new BusinessException(ErrorCode.UNAUTHORIZED);
+        }
+        if (watchId == null || watchId <= 0) {
+            throw new BusinessException(ErrorCode.PARAM_INVALID, "监控记录不能为空");
+        }
+
+        int updated = priceWatchMapper.disableByUser(watchId, userId);
+        if (updated <= 0) {
+            throw new BusinessException(ErrorCode.PARAM_INVALID, "监控记录不存在或已移除");
+        }
+    }
+
     private int calculateWatchDays(LocalDateTime startAt, LocalDateTime endAt) {
         if (startAt == null || endAt == null) {
             return 0;
