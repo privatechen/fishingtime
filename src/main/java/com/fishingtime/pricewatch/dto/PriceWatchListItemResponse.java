@@ -18,4 +18,6 @@ public class PriceWatchListItemResponse {
     private LocalDateTime startAt;
     private LocalDateTime endAt;
     private Integer status;
+    private Integer productStatus;
+    private Boolean available;
 }
