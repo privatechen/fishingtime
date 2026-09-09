@@ -93,6 +93,7 @@ public class PriceWatchService {
                         .platform(row.getPlatform())
                         .skuId(row.getSkuId())
                         .productUrl(row.getProductUrl())
+                        .imageUrl(row.getImageUrl())
                         .purchasePrice(row.getPurchasePrice())
                         .watchDays(calculateWatchDays(row.getStartAt(), row.getEndAt()))
                         .startAt(row.getStartAt())
