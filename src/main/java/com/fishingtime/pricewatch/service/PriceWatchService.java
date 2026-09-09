@@ -98,6 +98,8 @@ public class PriceWatchService {
                         .startAt(row.getStartAt())
                         .endAt(row.getEndAt())
                         .status(row.getStatus())
+                        .productStatus(row.getProductStatus())
+                        .available(Integer.valueOf(1).equals(row.getProductStatus()))
                         .build())
                 .collect(Collectors.toList());
     }
