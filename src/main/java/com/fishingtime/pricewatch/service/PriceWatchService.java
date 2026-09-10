@@ -31,6 +31,7 @@ public class PriceWatchService {
 
     private static final Pattern JD_ITEM_PATH = Pattern.compile("^/(\\d+)\\.html/?$");
     private static final Pattern DIGITS = Pattern.compile("^\\d+$");
+    private static final Pattern URL_PATTERN = Pattern.compile("https?://[^\\s\\u3000\\\"'<>]+", Pattern.CASE_INSENSITIVE);
 
     private final JdProductMapper jdProductMapper;
     private final TaobaoProductMapper taobaoProductMapper;
@@ -156,10 +157,15 @@ public class PriceWatchService {
             JdShortLinkResolver.ResolveResult resolved = jdShortLinkResolver.resolve(input);
             return new ParsedProduct("JD", resolved.getItemId(), resolved.getNormalizedUrl());
         }
-        if (input.toLowerCase().contains("m.tb.cn/")) {
-            TaobaoShortLinkPriceClient.ResolveResult resolved = taobaoShortLinkPriceClient.resolveAndCollect(input);
+
+        // Taobao/Tmall share text contains labels, token and title around the real m.tb.cn URL.
+        // Extract the actual short URL first, then call PriceTool with only that URL.
+        String sharedUrl = extractFirstUrl(input);
+        if (isTaobaoShortUrl(sharedUrl)) {
+            TaobaoShortLinkPriceClient.ResolveResult resolved = taobaoShortLinkPriceClient.resolveAndCollect(sharedUrl);
             return new ParsedProduct("TAOBAO", resolved.getItemId(), resolved.getShortUrl());
         }
+
         try {
             URI uri = URI.create(input);
             if (uri.getScheme() == null || !("http".equalsIgnoreCase(uri.getScheme()) || "https".equalsIgnoreCase(uri.getScheme())) || uri.getHost() == null) {
@@ -184,6 +190,23 @@ public class PriceWatchService {
             throw e;
         } catch (Exception e) {
             throw new BusinessException(ErrorCode.PARAM_INVALID, "商品链接格式不正确");
+        }
+    }
+
+    private String extractFirstUrl(String input) {
+        if (input == null || input.isBlank()) return null;
+        Matcher matcher = URL_PATTERN.matcher(input);
+        if (!matcher.find()) return null;
+        return matcher.group().replaceAll("[，。！？；：、）》】」』]+$", "");
+    }
+
+    private boolean isTaobaoShortUrl(String value) {
+        if (value == null || value.isBlank()) return false;
+        try {
+            URI uri = URI.create(value);
+            return "m.tb.cn".equalsIgnoreCase(uri.getHost());
+        } catch (Exception e) {
+            return false;
         }
     }
 
