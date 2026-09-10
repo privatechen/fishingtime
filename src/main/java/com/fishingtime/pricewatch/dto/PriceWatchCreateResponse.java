@@ -12,6 +12,7 @@ public class PriceWatchCreateResponse {
     private Long watchId;
     private String platform;
     private String skuId;
+    private String itemId;
     private String productUrl;
     private BigDecimal purchasePrice;
     private Integer watchDays;
