@@ -52,9 +52,7 @@ public class PriceWatchController {
     }
 
     @PostMapping("/resolve-taobao-link")
-    public ApiResponse<TaobaoShortLinkResolver.ResolveResult> resolveTaobaoLink(@CurrentUser CurrentUserInfo currentUser,
-                                                                                @RequestBody Map<String, String> request) {
-        if (currentUser == null) throw new BusinessException(ErrorCode.UNAUTHORIZED);
+    public ApiResponse<TaobaoShortLinkResolver.ResolveResult> resolveTaobaoLink(@RequestBody Map<String, String> request) {
         return ApiResponse.success(taobaoShortLinkResolver.resolve(request.get("input")));
     }
 
