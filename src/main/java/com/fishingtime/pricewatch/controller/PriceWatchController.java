@@ -10,6 +10,7 @@ import com.fishingtime.pricewatch.dto.PriceWatchCreateRequest;
 import com.fishingtime.pricewatch.dto.PriceWatchCreateResponse;
 import com.fishingtime.pricewatch.dto.PriceWatchListItemResponse;
 import com.fishingtime.pricewatch.service.PriceWatchService;
+import com.fishingtime.pricewatch.service.TaobaoShortLinkResolver;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -21,12 +22,14 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/price-watch")
 @RequiredArgsConstructor
 public class PriceWatchController {
     private final PriceWatchService priceWatchService;
+    private final TaobaoShortLinkResolver taobaoShortLinkResolver;
 
     @GetMapping
     public ApiResponse<List<PriceWatchListItemResponse>> list(@CurrentUser CurrentUserInfo currentUser) {
@@ -46,6 +49,13 @@ public class PriceWatchController {
     public ApiResponse<PriceWatchCreateResponse> create(@CurrentUser CurrentUserInfo currentUser, @RequestBody PriceWatchCreateRequest request) {
         if (currentUser == null) throw new BusinessException(ErrorCode.UNAUTHORIZED);
         return ApiResponse.success(priceWatchService.create(currentUser.getUserId(), request));
+    }
+
+    @PostMapping("/resolve-taobao-link")
+    public ApiResponse<TaobaoShortLinkResolver.ResolveResult> resolveTaobaoLink(@CurrentUser CurrentUserInfo currentUser,
+                                                                                @RequestBody Map<String, String> request) {
+        if (currentUser == null) throw new BusinessException(ErrorCode.UNAUTHORIZED);
+        return ApiResponse.success(taobaoShortLinkResolver.resolve(request.get("input")));
     }
 
     @DeleteMapping("/{watchId}")
