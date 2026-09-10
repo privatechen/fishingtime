@@ -37,6 +37,7 @@ public class PriceWatchService {
     private final PriceWatchMapper priceWatchMapper;
     private final PriceHistoryMapper priceHistoryMapper;
     private final JdShortLinkResolver jdShortLinkResolver;
+    private final TaobaoShortLinkPriceClient taobaoShortLinkPriceClient;
 
     @Transactional
     public PriceWatchCreateResponse create(Long userId, PriceWatchCreateRequest request) {
@@ -154,6 +155,10 @@ public class PriceWatchService {
         if (input.contains("3.cn/")) {
             JdShortLinkResolver.ResolveResult resolved = jdShortLinkResolver.resolve(input);
             return new ParsedProduct("JD", resolved.getItemId(), resolved.getNormalizedUrl());
+        }
+        if (input.toLowerCase().contains("m.tb.cn/")) {
+            TaobaoShortLinkPriceClient.ResolveResult resolved = taobaoShortLinkPriceClient.resolveAndCollect(input);
+            return new ParsedProduct("TAOBAO", resolved.getItemId(), resolved.getShortUrl());
         }
         try {
             URI uri = URI.create(input);
