@@ -9,12 +9,15 @@ import com.fishingtime.pricewatch.dto.PriceWatchListItemResponse;
 import com.fishingtime.pricewatch.mapper.JdProductMapper;
 import com.fishingtime.pricewatch.mapper.PriceHistoryMapper;
 import com.fishingtime.pricewatch.mapper.PriceWatchMapper;
+import com.fishingtime.pricewatch.mapper.TaobaoProductMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.net.URI;
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
@@ -27,8 +30,10 @@ import java.util.stream.Collectors;
 public class PriceWatchService {
 
     private static final Pattern JD_ITEM_PATH = Pattern.compile("^/(\\d+)\\.html/?$");
+    private static final Pattern DIGITS = Pattern.compile("^\\d+$");
 
     private final JdProductMapper jdProductMapper;
+    private final TaobaoProductMapper taobaoProductMapper;
     private final PriceWatchMapper priceWatchMapper;
     private final PriceHistoryMapper priceHistoryMapper;
 
@@ -36,39 +41,93 @@ public class PriceWatchService {
     public PriceWatchCreateResponse create(Long userId, PriceWatchCreateRequest request) {
         if (userId == null) throw new BusinessException(ErrorCode.UNAUTHORIZED);
         if (request == null) throw new BusinessException(ErrorCode.PARAM_INVALID, "请求参数不能为空");
-        String skuId = parseJdSku(request.getProductUrl());
+
+        ParsedProduct parsed = parseProduct(request.getProductUrl());
         BigDecimal purchasePrice = request.getPurchasePrice();
-        if (purchasePrice == null || purchasePrice.compareTo(BigDecimal.ZERO) <= 0) throw new BusinessException(ErrorCode.PARAM_INVALID, "购买价必须大于 0");
+        if (purchasePrice == null || purchasePrice.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new BusinessException(ErrorCode.PARAM_INVALID, "购买价必须大于 0");
+        }
         Integer watchDays = request.getWatchDays();
-        if (watchDays == null || (watchDays != 7 && watchDays != 15 && watchDays != 30)) throw new BusinessException(ErrorCode.PARAM_INVALID, "监控天数仅支持 7、15 或 30 天");
-        String normalizedUrl = "https://item.jd.com/" + skuId + ".html";
-        Long productId = jdProductMapper.findIdBySkuId(skuId);
-        if (productId == null) { jdProductMapper.insertIgnore(skuId, normalizedUrl); productId = jdProductMapper.findIdBySkuId(skuId); }
-        if (productId == null) throw new BusinessException(ErrorCode.SYSTEM_ERROR, "保存京东商品失败");
+        if (watchDays == null || (watchDays != 7 && watchDays != 15 && watchDays != 30)) {
+            throw new BusinessException(ErrorCode.PARAM_INVALID, "监控天数仅支持 7、15 或 30 天");
+        }
+
+        Long productId;
+        if ("JD".equals(parsed.platform())) {
+            productId = jdProductMapper.findIdBySkuId(parsed.productId());
+            if (productId == null) {
+                jdProductMapper.insertIgnore(parsed.productId(), parsed.productUrl());
+                productId = jdProductMapper.findIdBySkuId(parsed.productId());
+            }
+        } else {
+            productId = taobaoProductMapper.findIdByItemId(parsed.productId());
+            if (productId == null) {
+                taobaoProductMapper.insertIgnore(parsed.productId(), parsed.productUrl());
+                productId = taobaoProductMapper.findIdByItemId(parsed.productId());
+            }
+        }
+        if (productId == null) throw new BusinessException(ErrorCode.SYSTEM_ERROR, "保存商品失败");
+
         LocalDateTime startAt = LocalDateTime.now();
         LocalDateTime endAt = startAt.plusDays(watchDays);
         PriceWatchMapper.PriceWatchInsertParam param = new PriceWatchMapper.PriceWatchInsertParam();
-        param.setUserId(userId); param.setProductId(productId); param.setPurchasePrice(purchasePrice); param.setStartAt(startAt); param.setEndAt(endAt);
+        param.setUserId(userId);
+        param.setPlatform(parsed.platform());
+        param.setProductId(productId);
+        param.setPurchasePrice(purchasePrice);
+        param.setStartAt(startAt);
+        param.setEndAt(endAt);
         priceWatchMapper.insert(param);
-        return PriceWatchCreateResponse.builder().watchId(param.getId()).platform("JD").skuId(skuId).productUrl(normalizedUrl).purchasePrice(purchasePrice).watchDays(watchDays).startAt(startAt).endAt(endAt).build();
+
+        return PriceWatchCreateResponse.builder()
+                .watchId(param.getId())
+                .platform(parsed.platform())
+                .skuId("JD".equals(parsed.platform()) ? parsed.productId() : null)
+                .itemId("TAOBAO".equals(parsed.platform()) ? parsed.productId() : null)
+                .productUrl(parsed.productUrl())
+                .purchasePrice(purchasePrice)
+                .watchDays(watchDays)
+                .startAt(startAt)
+                .endAt(endAt)
+                .build();
     }
 
     public List<PriceWatchListItemResponse> list(Long userId) {
         if (userId == null) throw new BusinessException(ErrorCode.UNAUTHORIZED);
-        return priceWatchMapper.findByUserId(userId).stream().map(row -> PriceWatchListItemResponse.builder()
-                .watchId(row.getWatchId()).platform(row.getPlatform()).skuId(row.getSkuId()).productUrl(row.getProductUrl()).imageUrl(row.getImageUrl())
-                .purchasePrice(row.getPurchasePrice()).watchDays(calculateWatchDays(row.getStartAt(), row.getEndAt())).startAt(row.getStartAt()).endAt(row.getEndAt())
-                .status(row.getStatus()).productStatus(row.getProductStatus()).available(Integer.valueOf(1).equals(row.getProductStatus())).build()).collect(Collectors.toList());
+        return priceWatchMapper.findByUserId(userId).stream().map(row -> {
+            boolean jd = "JD".equals(row.getPlatform());
+            return PriceWatchListItemResponse.builder()
+                    .watchId(row.getWatchId())
+                    .platform(row.getPlatform())
+                    .skuId(jd ? row.getPlatformProductId() : null)
+                    .itemId(jd ? null : row.getPlatformProductId())
+                    .productUrl(row.getProductUrl())
+                    .imageUrl(row.getImageUrl())
+                    .title(row.getTitle())
+                    .currentPrice(row.getCurrentPrice())
+                    .purchasePrice(row.getPurchasePrice())
+                    .watchDays(calculateWatchDays(row.getStartAt(), row.getEndAt()))
+                    .startAt(row.getStartAt())
+                    .endAt(row.getEndAt())
+                    .status(row.getStatus())
+                    .productStatus(row.getProductStatus())
+                    .available(Integer.valueOf(1).equals(row.getProductStatus()))
+                    .build();
+        }).collect(Collectors.toList());
     }
 
     public List<PriceHistoryPointResponse> history(Long userId, Long watchId, Integer days) {
         if (userId == null) throw new BusinessException(ErrorCode.UNAUTHORIZED);
         if (watchId == null || watchId <= 0) throw new BusinessException(ErrorCode.PARAM_INVALID, "监控记录不能为空");
         int queryDays = days == null ? 30 : days;
-        if (queryDays != 7 && queryDays != 30 && queryDays != 90) throw new BusinessException(ErrorCode.PARAM_INVALID, "历史报价仅支持 7、30 或 90 天");
-        Long productId = priceWatchMapper.findProductIdByWatchAndUser(watchId, userId);
-        if (productId == null) throw new BusinessException(ErrorCode.PARAM_INVALID, "监控记录不存在");
-        return priceHistoryMapper.findDailyLastPrices(productId, queryDays).stream()
+        if (queryDays != 7 && queryDays != 30 && queryDays != 90) {
+            throw new BusinessException(ErrorCode.PARAM_INVALID, "历史报价仅支持 7、30 或 90 天");
+        }
+        PriceWatchMapper.PriceWatchTarget target = priceWatchMapper.findTargetByWatchAndUser(watchId, userId);
+        if (target == null || target.getProductId() == null) {
+            throw new BusinessException(ErrorCode.PARAM_INVALID, "监控记录不存在");
+        }
+        return priceHistoryMapper.findDailyLastPrices(target.getPlatform(), target.getProductId(), queryDays).stream()
                 .map(row -> PriceHistoryPointResponse.builder().date(row.getPriceDate()).price(row.getPrice()).build())
                 .collect(Collectors.toList());
     }
@@ -81,15 +140,54 @@ public class PriceWatchService {
         if (updated <= 0) throw new BusinessException(ErrorCode.PARAM_INVALID, "监控记录不存在或已移除");
     }
 
-    private int calculateWatchDays(LocalDateTime startAt, LocalDateTime endAt) { if (startAt == null || endAt == null) return 0; return (int) ChronoUnit.DAYS.between(startAt, endAt); }
-    private String parseJdSku(String productUrl) {
-        if (productUrl == null || productUrl.trim().isEmpty()) throw new BusinessException(ErrorCode.PARAM_INVALID, "商品链接不能为空");
+    private int calculateWatchDays(LocalDateTime startAt, LocalDateTime endAt) {
+        if (startAt == null || endAt == null) return 0;
+        return (int) ChronoUnit.DAYS.between(startAt, endAt);
+    }
+
+    private ParsedProduct parseProduct(String productUrl) {
+        if (productUrl == null || productUrl.trim().isEmpty()) {
+            throw new BusinessException(ErrorCode.PARAM_INVALID, "商品链接不能为空");
+        }
         try {
             URI uri = URI.create(productUrl.trim());
-            if (uri.getScheme() == null || !("http".equalsIgnoreCase(uri.getScheme()) || "https".equalsIgnoreCase(uri.getScheme())) || uri.getHost() == null || !"item.jd.com".equalsIgnoreCase(uri.getHost())) throw new BusinessException(ErrorCode.PARAM_INVALID, "当前仅支持 item.jd.com 京东商品链接");
-            Matcher matcher = JD_ITEM_PATH.matcher(uri.getPath());
-            if (!matcher.matches()) throw new BusinessException(ErrorCode.PARAM_INVALID, "无法从京东商品链接中识别 SKU");
-            return matcher.group(1);
-        } catch (BusinessException e) { throw e; } catch (Exception e) { throw new BusinessException(ErrorCode.PARAM_INVALID, "京东商品链接格式不正确"); }
+            if (uri.getScheme() == null || !("http".equalsIgnoreCase(uri.getScheme()) || "https".equalsIgnoreCase(uri.getScheme())) || uri.getHost() == null) {
+                throw new BusinessException(ErrorCode.PARAM_INVALID, "商品链接格式不正确");
+            }
+            String host = uri.getHost().toLowerCase();
+            if ("item.jd.com".equals(host)) {
+                Matcher matcher = JD_ITEM_PATH.matcher(uri.getPath());
+                if (!matcher.matches()) throw new BusinessException(ErrorCode.PARAM_INVALID, "无法从京东商品链接中识别 SKU");
+                String skuId = matcher.group(1);
+                return new ParsedProduct("JD", skuId, "https://item.jd.com/" + skuId + ".html");
+            }
+            if (host.endsWith("taobao.com") || host.endsWith("tmall.com")) {
+                String itemId = queryParam(uri.getRawQuery(), "id");
+                if (itemId == null || !DIGITS.matcher(itemId).matches()) {
+                    throw new BusinessException(ErrorCode.PARAM_INVALID, "无法从淘宝/天猫商品链接中识别商品 ID");
+                }
+                return new ParsedProduct("TAOBAO", itemId, productUrl.trim());
+            }
+            throw new BusinessException(ErrorCode.PARAM_INVALID, "当前仅支持京东、淘宝和天猫商品链接");
+        } catch (BusinessException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new BusinessException(ErrorCode.PARAM_INVALID, "商品链接格式不正确");
+        }
     }
+
+    private String queryParam(String rawQuery, String name) {
+        if (rawQuery == null || rawQuery.isBlank()) return null;
+        for (String part : rawQuery.split("&")) {
+            int equals = part.indexOf('=');
+            String rawKey = equals >= 0 ? part.substring(0, equals) : part;
+            String key = URLDecoder.decode(rawKey, StandardCharsets.UTF_8);
+            if (!name.equals(key)) continue;
+            String rawValue = equals >= 0 ? part.substring(equals + 1) : "";
+            return URLDecoder.decode(rawValue, StandardCharsets.UTF_8);
+        }
+        return null;
+    }
+
+    private record ParsedProduct(String platform, String productId, String productUrl) {}
 }
