@@ -36,6 +36,7 @@ public class PriceWatchService {
     private final TaobaoProductMapper taobaoProductMapper;
     private final PriceWatchMapper priceWatchMapper;
     private final PriceHistoryMapper priceHistoryMapper;
+    private final JdShortLinkResolver jdShortLinkResolver;
 
     @Transactional
     public PriceWatchCreateResponse create(Long userId, PriceWatchCreateRequest request) {
@@ -149,8 +150,13 @@ public class PriceWatchService {
         if (productUrl == null || productUrl.trim().isEmpty()) {
             throw new BusinessException(ErrorCode.PARAM_INVALID, "商品链接不能为空");
         }
+        String input = productUrl.trim();
+        if (input.contains("3.cn/")) {
+            JdShortLinkResolver.ResolveResult resolved = jdShortLinkResolver.resolve(input);
+            return new ParsedProduct("JD", resolved.getItemId(), resolved.getNormalizedUrl());
+        }
         try {
-            URI uri = URI.create(productUrl.trim());
+            URI uri = URI.create(input);
             if (uri.getScheme() == null || !("http".equalsIgnoreCase(uri.getScheme()) || "https".equalsIgnoreCase(uri.getScheme())) || uri.getHost() == null) {
                 throw new BusinessException(ErrorCode.PARAM_INVALID, "商品链接格式不正确");
             }
@@ -166,7 +172,7 @@ public class PriceWatchService {
                 if (itemId == null || !DIGITS.matcher(itemId).matches()) {
                     throw new BusinessException(ErrorCode.PARAM_INVALID, "无法从淘宝/天猫商品链接中识别商品 ID");
                 }
-                return new ParsedProduct("TAOBAO", itemId, productUrl.trim());
+                return new ParsedProduct("TAOBAO", itemId, input);
             }
             throw new BusinessException(ErrorCode.PARAM_INVALID, "当前仅支持京东、淘宝和天猫商品链接");
         } catch (BusinessException e) {
