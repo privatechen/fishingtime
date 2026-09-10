@@ -9,6 +9,7 @@ import com.fishingtime.pricewatch.dto.PriceHistoryPointResponse;
 import com.fishingtime.pricewatch.dto.PriceWatchCreateRequest;
 import com.fishingtime.pricewatch.dto.PriceWatchCreateResponse;
 import com.fishingtime.pricewatch.dto.PriceWatchListItemResponse;
+import com.fishingtime.pricewatch.service.JdShortLinkResolver;
 import com.fishingtime.pricewatch.service.PriceWatchService;
 import com.fishingtime.pricewatch.service.TaobaoShortLinkResolver;
 import lombok.RequiredArgsConstructor;
@@ -30,6 +31,7 @@ import java.util.Map;
 public class PriceWatchController {
     private final PriceWatchService priceWatchService;
     private final TaobaoShortLinkResolver taobaoShortLinkResolver;
+    private final JdShortLinkResolver jdShortLinkResolver;
 
     @GetMapping
     public ApiResponse<List<PriceWatchListItemResponse>> list(@CurrentUser CurrentUserInfo currentUser) {
@@ -54,6 +56,11 @@ public class PriceWatchController {
     @PostMapping("/resolve-taobao-link")
     public ApiResponse<TaobaoShortLinkResolver.ResolveResult> resolveTaobaoLink(@RequestBody Map<String, String> request) {
         return ApiResponse.success(taobaoShortLinkResolver.resolve(request.get("input")));
+    }
+
+    @PostMapping("/resolve-jd-link")
+    public ApiResponse<JdShortLinkResolver.ResolveResult> resolveJdLink(@RequestBody Map<String, String> request) {
+        return ApiResponse.success(jdShortLinkResolver.resolve(request.get("input")));
     }
 
     @DeleteMapping("/{watchId}")
