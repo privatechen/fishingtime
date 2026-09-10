@@ -19,7 +19,7 @@ import java.util.regex.Pattern;
 public class JdShortLinkResolver {
 
     private static final Pattern URL_PATTERN = Pattern.compile("https?://[^\\s]+", Pattern.CASE_INSENSITIVE);
-    private static final Pattern ITEM_URL_PATTERN = Pattern.compile("(?:item\\.jd\\.com|item\\.m\\.jd\\.com)/(\\d+)\\.html", Pattern.CASE_INSENSITIVE);
+    private static final Pattern ITEM_URL_PATTERN = Pattern.compile("(?:item\\.jd\\.com|item\\.m\\.jd\\.com)/(?:product/)?(\\d+)\\.html", Pattern.CASE_INSENSITIVE);
     private static final Pattern SKU_QUERY_PATTERN = Pattern.compile("[?&](?:sku|skuId|sku_id|wareId)=(\\d+)", Pattern.CASE_INSENSITIVE);
     private static final Pattern HTML_SKU_PATTERN = Pattern.compile("[\\\"']?(?:skuId|sku_id|wareId)[\\\"']?\\s*[:=]\\s*[\\\"']?(\\d+)", Pattern.CASE_INSENSITIVE);
 
