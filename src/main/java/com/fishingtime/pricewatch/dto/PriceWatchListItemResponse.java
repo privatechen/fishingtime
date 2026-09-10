@@ -12,8 +12,11 @@ public class PriceWatchListItemResponse {
     private Long watchId;
     private String platform;
     private String skuId;
+    private String itemId;
     private String productUrl;
     private String imageUrl;
+    private String title;
+    private BigDecimal currentPrice;
     private BigDecimal purchasePrice;
     private Integer watchDays;
     private LocalDateTime startAt;
