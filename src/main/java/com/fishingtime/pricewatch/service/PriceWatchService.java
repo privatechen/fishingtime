@@ -189,5 +189,19 @@ public class PriceWatchService {
         return null;
     }
 
-    private record ParsedProduct(String platform, String productId, String productUrl) {}
+    private static final class ParsedProduct {
+        private final String platform;
+        private final String productId;
+        private final String productUrl;
+
+        private ParsedProduct(String platform, String productId, String productUrl) {
+            this.platform = platform;
+            this.productId = productId;
+            this.productUrl = productUrl;
+        }
+
+        private String platform() { return platform; }
+        private String productId() { return productId; }
+        private String productUrl() { return productUrl; }
+    }
 }
