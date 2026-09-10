@@ -28,6 +28,9 @@ public interface PriceWatchMapper {
             "ORDER BY pw.start_at DESC, pw.id DESC")
     List<PriceWatchListRow> findByUserId(@Param("userId") Long userId);
 
+    @Select("SELECT product_id FROM price_watch WHERE id = #{watchId} AND user_id = #{userId} LIMIT 1")
+    Long findProductIdByWatchAndUser(@Param("watchId") Long watchId, @Param("userId") Long userId);
+
     @Update("UPDATE price_watch SET status = 0 WHERE id = #{watchId} AND user_id = #{userId} AND status = 1")
     int disableByUser(@Param("watchId") Long watchId, @Param("userId") Long userId);
 
