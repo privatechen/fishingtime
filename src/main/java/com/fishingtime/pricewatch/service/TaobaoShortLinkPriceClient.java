@@ -16,7 +16,6 @@ import java.time.Duration;
 @Component
 public class TaobaoShortLinkPriceClient {
 
-    private static final Pattern URL_PATTERN = Pattern.compile("https?://[^\\s\\u3000\\\"'<>]+", Pattern.CASE_INSENSITIVE);
 
     private final HttpClient httpClient;
     private final ObjectMapper objectMapper;
