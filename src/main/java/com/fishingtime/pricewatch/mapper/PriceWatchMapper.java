@@ -23,7 +23,7 @@ public interface PriceWatchMapper {
             "CASE WHEN pw.platform = 'JD' THEN jp.sku_id ELSE tp.item_id END AS platformProductId, " +
             "CASE WHEN pw.platform = 'JD' THEN jp.product_url ELSE tp.product_url END AS productUrl, " +
             "CASE WHEN pw.platform = 'JD' THEN jp.image_url ELSE tp.image_url END AS imageUrl, " +
-            "CASE WHEN pw.platform = 'TAOBAO' THEN tp.title ELSE NULL END AS title, " +
+            "CASE WHEN pw.platform = 'JD' THEN jp.title ELSE tp.title END AS title, " +
             "CASE WHEN pw.platform = 'JD' THEN jp.current_price ELSE tp.current_price END AS currentPrice, " +
             "pw.purchase_price AS purchasePrice, pw.start_at AS startAt, pw.end_at AS endAt, pw.status AS status, " +
             "CASE WHEN pw.platform = 'JD' THEN jp.status ELSE tp.status END AS productStatus " +
