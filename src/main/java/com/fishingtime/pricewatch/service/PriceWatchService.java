@@ -158,11 +158,10 @@ public class PriceWatchService {
             return new ParsedProduct("JD", resolved.getItemId(), resolved.getNormalizedUrl());
         }
 
-        // Taobao/Tmall share text contains labels, token and title around the real m.tb.cn URL.
-        // Extract the actual short URL first, then call PriceTool with only that URL.
-        String sharedUrl = extractFirstUrl(input);
-        if (isTaobaoShortUrl(sharedUrl)) {
-            TaobaoShortLinkPriceClient.ResolveResult resolved = taobaoShortLinkPriceClient.resolveAndCollect(sharedUrl);
+        // Fishingtime is only the entry point. Pass the complete Taobao/Tmall
+        // sharing text to PriceTool; URL extraction and short-link resolution belong there.
+        if (input.toLowerCase().contains("m.tb.cn/")) {
+            TaobaoShortLinkPriceClient.ResolveResult resolved = taobaoShortLinkPriceClient.resolveAndCollect(input);
             return new ParsedProduct("TAOBAO", resolved.getItemId(), resolved.getShortUrl());
         }
 
@@ -190,23 +189,6 @@ public class PriceWatchService {
             throw e;
         } catch (Exception e) {
             throw new BusinessException(ErrorCode.PARAM_INVALID, "商品链接格式不正确");
-        }
-    }
-
-    private String extractFirstUrl(String input) {
-        if (input == null || input.isBlank()) return null;
-        Matcher matcher = URL_PATTERN.matcher(input);
-        if (!matcher.find()) return null;
-        return matcher.group().replaceAll("[，。！？；：、）》】」』]+$", "");
-    }
-
-    private boolean isTaobaoShortUrl(String value) {
-        if (value == null || value.isBlank()) return false;
-        try {
-            URI uri = URI.create(value);
-            return "m.tb.cn".equalsIgnoreCase(uri.getHost());
-        } catch (Exception e) {
-            return false;
         }
     }
 
