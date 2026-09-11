@@ -1,0 +1,14 @@
+.price-watch-page .watch-item .item-main {
+  min-width: 0 !important;
+  overflow: hidden;
+}
+
+.price-watch-page .watch-item .item-main > a {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
