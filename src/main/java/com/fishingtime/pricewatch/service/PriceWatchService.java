@@ -31,7 +31,6 @@ public class PriceWatchService {
 
     private static final Pattern JD_ITEM_PATH = Pattern.compile("^/(\\d+)\\.html/?$");
     private static final Pattern DIGITS = Pattern.compile("^\\d+$");
-    private static final Pattern URL_PATTERN = Pattern.compile("https?://[^\\s\\u3000\\\"'<>]+", Pattern.CASE_INSENSITIVE);
 
     private final JdProductMapper jdProductMapper;
     private final TaobaoProductMapper taobaoProductMapper;
