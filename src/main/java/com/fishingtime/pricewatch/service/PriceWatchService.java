@@ -99,8 +99,8 @@ public class PriceWatchService {
     }
 
     /**
-     * PriceGuard only submits a Taobao share text. Fishingtime extracts and stores
-     * the m.tb.cn URL; PriceTool will process the database row asynchronously.
+     * Routes PriceGuard share text by short-link host. JD reuses the existing
+     * JD flow; Taobao stores the m.tb.cn URL for asynchronous processing.
      */
     @Transactional
     public PriceWatchCreateResponse createFromPriceguard(Long userId, PriceguardPriceWatchCreateRequest request) {
@@ -114,8 +114,21 @@ public class PriceWatchService {
             if (userId == null) throw new BusinessException(ErrorCode.UNAUTHORIZED);
             if (request == null) throw new BusinessException(ErrorCode.PARAM_INVALID, "请求参数不能为空");
 
-            String shortUrl = extractTaobaoShortUrl(request.getProductText());
-            log.info("[PriceGuard盯价] 淘宝短链提取成功 userId={}, shortUrl={}", userId, shortUrl);
+            String productText = request.getProductText();
+            if (containsJdShortUrl(productText)) {
+                log.info("[PriceGuard盯价] 识别为京东分享文案，进入原有京东流程 userId={}", userId);
+                PriceWatchCreateRequest jdRequest = new PriceWatchCreateRequest();
+                jdRequest.setProductUrl(productText);
+                jdRequest.setPurchasePrice(request.getPurchasePrice());
+                jdRequest.setWatchDays(request.getWatchDays());
+                PriceWatchCreateResponse response = create(userId, jdRequest);
+                log.info("[PriceGuard盯价] 京东监控保存成功 userId={}, watchId={}, skuId={}",
+                        userId, response.getWatchId(), response.getSkuId());
+                return response;
+            }
+
+            String shortUrl = extractTaobaoShortUrl(productText);
+            log.info("[PriceGuard盯价] 识别为淘宝分享文案，短链提取成功 userId={}, shortUrl={}", userId, shortUrl);
 
             BigDecimal purchasePrice = request.getPurchasePrice();
             if (purchasePrice == null || purchasePrice.compareTo(BigDecimal.ZERO) <= 0) {
@@ -172,6 +185,20 @@ public class PriceWatchService {
             log.error("[PriceGuard盯价] 系统异常 userId={}, productTextLength={}", userId, textLength, e);
             throw e;
         }
+    }
+
+    private boolean containsJdShortUrl(String productText) {
+        if (productText == null || productText.isBlank()) return false;
+        Matcher matcher = URL_PATTERN.matcher(productText);
+        while (matcher.find()) {
+            try {
+                String host = URI.create(matcher.group()).getHost();
+                if ("3.cn".equalsIgnoreCase(host)) return true;
+            } catch (Exception ignored) {
+                // Continue looking for another URL in the share text.
+            }
+        }
+        return false;
     }
 
     private String extractTaobaoShortUrl(String productText) {
