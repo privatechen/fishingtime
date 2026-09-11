@@ -55,9 +55,8 @@ public class PriceWatchController {
     }
 
     /**
-     * Entry point for priceguard mini program.
-     * It intentionally keeps the original share text and delegates to the same
-     * create flow, so existing fishingtime behavior is unchanged.
+     * Entry point for the PriceGuard mini program.
+     * The service routes JD and Taobao share text to their respective flows.
      */
     @PostMapping("/priceguard")
     public ApiResponse<PriceWatchCreateResponse> createFromPriceguard(@CurrentUser CurrentUserInfo currentUser,
