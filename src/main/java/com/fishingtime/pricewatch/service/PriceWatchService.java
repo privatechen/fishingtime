@@ -6,6 +6,7 @@ import com.fishingtime.pricewatch.dto.PriceHistoryPointResponse;
 import com.fishingtime.pricewatch.dto.PriceWatchCreateRequest;
 import com.fishingtime.pricewatch.dto.PriceWatchCreateResponse;
 import com.fishingtime.pricewatch.dto.PriceWatchListItemResponse;
+import com.fishingtime.pricewatch.dto.PriceguardPriceWatchCreateRequest;
 import com.fishingtime.pricewatch.mapper.JdProductMapper;
 import com.fishingtime.pricewatch.mapper.PriceHistoryMapper;
 import com.fishingtime.pricewatch.mapper.PriceWatchMapper;
@@ -31,6 +32,7 @@ public class PriceWatchService {
 
     private static final Pattern JD_ITEM_PATH = Pattern.compile("^/(\\d+)\\.html/?$");
     private static final Pattern DIGITS = Pattern.compile("^\\d+$");
+    private static final Pattern URL_PATTERN = Pattern.compile("https?://[^\\s\\u3000\\\"'<>]+", Pattern.CASE_INSENSITIVE);
 
     private final JdProductMapper jdProductMapper;
     private final TaobaoProductMapper taobaoProductMapper;
@@ -92,6 +94,71 @@ public class PriceWatchService {
                 .startAt(startAt)
                 .endAt(endAt)
                 .build();
+    }
+
+    /**
+     * PriceGuard only submits a Taobao share text. Fishingtime extracts and stores
+     * the m.tb.cn URL; PriceTool will process the database row asynchronously.
+     */
+    @Transactional
+    public PriceWatchCreateResponse createFromPriceguard(Long userId, PriceguardPriceWatchCreateRequest request) {
+        if (userId == null) throw new BusinessException(ErrorCode.UNAUTHORIZED);
+        if (request == null) throw new BusinessException(ErrorCode.PARAM_INVALID, "请求参数不能为空");
+
+        String shortUrl = extractTaobaoShortUrl(request.getProductText());
+        BigDecimal purchasePrice = request.getPurchasePrice();
+        if (purchasePrice == null || purchasePrice.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new BusinessException(ErrorCode.PARAM_INVALID, "购买价必须大于 0");
+        }
+        Integer watchDays = request.getWatchDays();
+        if (watchDays == null || watchDays < 1 || watchDays > 30) {
+            throw new BusinessException(ErrorCode.PARAM_INVALID, "监控天数仅支持 1 到 30 天");
+        }
+
+        Long productId = taobaoProductMapper.findIdByProductUrl(shortUrl);
+        if (productId == null) {
+            taobaoProductMapper.insertPending(shortUrl);
+            productId = taobaoProductMapper.findIdByProductUrl(shortUrl);
+        }
+        if (productId == null) throw new BusinessException(ErrorCode.SYSTEM_ERROR, "保存淘宝短链接失败");
+
+        LocalDateTime startAt = LocalDateTime.now();
+        LocalDateTime endAt = startAt.plusDays(watchDays);
+        PriceWatchMapper.PriceWatchInsertParam param = new PriceWatchMapper.PriceWatchInsertParam();
+        param.setUserId(userId);
+        param.setPlatform("TAOBAO");
+        param.setProductId(productId);
+        param.setPurchasePrice(purchasePrice);
+        param.setStartAt(startAt);
+        param.setEndAt(endAt);
+        priceWatchMapper.insert(param);
+
+        return PriceWatchCreateResponse.builder()
+                .watchId(param.getId())
+                .platform("TAOBAO")
+                .productUrl(shortUrl)
+                .purchasePrice(purchasePrice)
+                .watchDays(watchDays)
+                .startAt(startAt)
+                .endAt(endAt)
+                .build();
+    }
+
+    private String extractTaobaoShortUrl(String productText) {
+        if (productText == null || productText.isBlank()) {
+            throw new BusinessException(ErrorCode.PARAM_INVALID, "商品分享内容不能为空");
+        }
+        Matcher matcher = URL_PATTERN.matcher(productText);
+        while (matcher.find()) {
+            String value = matcher.group().replaceAll("[，。！？；：、）》】」』]+$", "");
+            try {
+                URI uri = URI.create(value);
+                if ("m.tb.cn".equalsIgnoreCase(uri.getHost())) return value;
+            } catch (Exception ignored) {
+                // Continue looking for another URL in the share text.
+            }
+        }
+        throw new BusinessException(ErrorCode.PARAM_INVALID, "未找到淘宝 m.tb.cn 短链接");
     }
 
     public List<PriceWatchListItemResponse> list(Long userId) {
