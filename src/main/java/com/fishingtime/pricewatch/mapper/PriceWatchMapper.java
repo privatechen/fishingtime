@@ -19,6 +19,17 @@ public interface PriceWatchMapper {
     @Options(useGeneratedKeys = true, keyProperty = "id")
     int insert(PriceWatchInsertParam param);
 
+    /**
+     * PriceGuard submissions are idempotent for the same user/platform/product.
+     * LAST_INSERT_ID(id) also returns the existing watch id on the update path.
+     */
+    @Insert("INSERT INTO price_watch (user_id, platform, product_id, purchase_price, start_at, end_at, status) " +
+            "VALUES (#{userId}, #{platform}, #{productId}, #{purchasePrice}, #{startAt}, #{endAt}, 1) " +
+            "ON DUPLICATE KEY UPDATE purchase_price = VALUES(purchase_price), " +
+            "start_at = VALUES(start_at), end_at = VALUES(end_at), status = 1, id = LAST_INSERT_ID(id)")
+    @Options(useGeneratedKeys = true, keyProperty = "id")
+    int upsertForPriceguard(PriceWatchInsertParam param);
+
     @Select("SELECT pw.id AS watchId, pw.platform AS platform, " +
             "CASE WHEN pw.platform = 'JD' THEN jp.sku_id ELSE tp.item_id END AS platformProductId, " +
             "CASE WHEN pw.platform = 'JD' THEN jp.product_url ELSE tp.product_url END AS productUrl, " +
