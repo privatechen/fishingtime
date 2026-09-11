@@ -39,7 +39,6 @@ public class PriceWatchService {
     private final PriceWatchMapper priceWatchMapper;
     private final PriceHistoryMapper priceHistoryMapper;
     private final JdShortLinkResolver jdShortLinkResolver;
-    private final TaobaoShortLinkPriceClient taobaoShortLinkPriceClient;
     private final TaobaoShortLinkResolver taobaoShortLinkResolver;
 
     @Transactional
@@ -177,18 +176,11 @@ public class PriceWatchService {
         }
 
         // Taobao/Tmall share text contains labels, token and title around the real m.tb.cn URL.
-        // Extract the actual short URL first, then call PriceTool with only that URL.
+        // Resolve only the product identity here. PriceTool collects prices asynchronously.
         String sharedUrl = extractFirstUrl(input);
         if (isTaobaoShortUrl(sharedUrl)) {
-            try {
-                TaobaoShortLinkPriceClient.ResolveResult resolved = taobaoShortLinkPriceClient.resolveAndCollect(sharedUrl);
-                return new ParsedProduct("TAOBAO", resolved.getItemId(), resolved.getShortUrl());
-            } catch (BusinessException localCollectFailure) {
-                // Local PriceTool may be offline. Resolve only the product identity so
-                // the link can still be stored and picked up by the later collection task.
-                TaobaoShortLinkResolver.ResolveResult resolved = taobaoShortLinkResolver.resolve(sharedUrl);
-                return new ParsedProduct("TAOBAO", resolved.getItemId(), resolved.getSourceUrl());
-            }
+            TaobaoShortLinkResolver.ResolveResult resolved = taobaoShortLinkResolver.resolve(sharedUrl);
+            return new ParsedProduct("TAOBAO", resolved.getItemId(), resolved.getSourceUrl());
         }
 
         try {
