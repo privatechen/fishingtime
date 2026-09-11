@@ -22,12 +22,10 @@ import java.net.http.HttpResponse;
 import java.time.Duration;
 
 /**
- * 微信小程序登录/注册服务
+ * 微信小程序/小游戏登录服务。
  *
- * 微信用户免密：认证完全依赖 OpenID（wx.login code → code2session）。
- * 支持多个小程序共用一套后端：客户端上报 appId，code2session 用对应 appid 的 secret。
- * - login：识别已有用户；首次（新 openid）静默创建游客账号（昵称「人民xxxxx」递增）
- * - register：设置用户名建立用户（免密，昵称=用户名）
+ * 同一套后端可以服务多个微信应用，但用户身份按 appId + openid 隔离。
+ * 历史用户如果 wx_appid 为空，会在首次登录时自动绑定当前 appId，避免重复建号。
  */
 @Slf4j
 @Service
@@ -43,16 +41,16 @@ public class WxAuthService {
             .connectTimeout(Duration.ofSeconds(5))
             .build();
 
-    /** 微信登录：识别已有用户；首次（新 openid）静默创建游客账号（昵称「人民xxxxx」递增），全程无弹窗 */
+    /** 微信登录：按 appId + openid 查找用户；首次登录静默创建游客账号。 */
     public WxLoginResult login(String code, String appId) {
         if (code == null || code.isBlank()) {
             throw new BusinessException(ErrorCode.PARAM_INVALID, "缺少微信登录 code");
         }
 
         String openid = code2Session(code, appId);
-        User user = userMapper.selectByOpenid(openid);
+        User user = findOrAdoptUser(openid, appId);
         if (user == null) {
-            user = createGuestUser(openid);
+            user = createGuestUser(openid, appId);
         }
 
         CurrentUserInfo info = new CurrentUserInfo(user.getId(), user.getUsername(), user.getNickname());
@@ -60,8 +58,32 @@ public class WxAuthService {
         return new WxLoginResult(false, token, toDTO(user));
     }
 
-    /** 静默创建游客账号：用户名 wx+openid（唯一），昵称「人民00001」按序号递增；免密登录（认证靠 OpenID） */
-    private User createGuestUser(String openid) {
+    /**
+     * 先按 appId + openid 查找；若没有，再兼容一次历史数据（wx_appid 为空），并绑定到当前 appId。
+     */
+    private User findOrAdoptUser(String openid, String appId) {
+        User user = userMapper.selectByOpenidAndAppId(openid, appId);
+        if (user != null) {
+            return user;
+        }
+
+        User legacy = userMapper.selectLegacyByOpenid(openid);
+        if (legacy == null) {
+            return null;
+        }
+
+        int updated = userMapper.bindWxAppid(legacy.getId(), appId);
+        if (updated > 0) {
+            legacy.setWxAppid(appId);
+            log.info("[微信] 历史用户绑定 appId, userId={}, appId={}", legacy.getId(), appId);
+            return legacy;
+        }
+
+        return userMapper.selectByOpenidAndAppId(openid, appId);
+    }
+
+    /** 静默创建游客账号。 */
+    private User createGuestUser(String openid, String appId) {
         String username = "wx" + openid;
         if (username.length() > 32) {
             username = username.substring(0, 32);
@@ -73,14 +95,15 @@ public class WxAuthService {
         user.setUsername(username);
         user.setNickname(nickname);
         user.setOpenid(openid);
+        user.setWxAppid(appId);
         user.setStatus(1);
         user.setPassword("");
         userMapper.insertUser(user);
-        log.info("[微信] 静默创建游客用户 userId={}, nickname={}", user.getId(), nickname);
+        log.info("[微信] 静默创建游客用户 userId={}, nickname={}, appId={}", user.getId(), nickname, appId);
         return user;
     }
 
-    /** 微信注册：首次设置用户名建立用户（免密，昵称与用户名保持一致） */
+    /** 微信注册：首次设置用户名建立用户。 */
     public WxLoginResult register(String username, String code, String appId) {
         if (username == null || username.trim().length() < 3 || username.trim().length() > 32) {
             throw new BusinessException(ErrorCode.PARAM_INVALID, "用户名长度 3~32 个字符");
@@ -91,27 +114,27 @@ public class WxAuthService {
         }
 
         String openid = code2Session(code, appId);
-        User user = userMapper.selectByOpenid(openid);
+        User user = findOrAdoptUser(openid, appId);
         if (user != null) {
-            // 并发/重复注册：直接返回已有用户
             CurrentUserInfo info = new CurrentUserInfo(user.getId(), user.getUsername(), user.getNickname());
             return new WxLoginResult(false, tokenService.createToken(info), toDTO(user));
         }
 
         User newUser = new User();
         newUser.setUsername(name);
-        newUser.setNickname(name); // 昵称与用户名保持一致
+        newUser.setNickname(name);
         newUser.setOpenid(openid);
+        newUser.setWxAppid(appId);
         newUser.setStatus(1);
-        newUser.setPassword(""); // 微信用户免密，密码不可用于登录，认证靠 OpenID
+        newUser.setPassword("");
         userMapper.insertUser(newUser);
-        log.info("[微信] 用户注册成功 userId={}, username={}", newUser.getId(), newUser.getUsername());
+        log.info("[微信] 用户注册成功 userId={}, username={}, appId={}", newUser.getId(), newUser.getUsername(), appId);
 
         CurrentUserInfo info = new CurrentUserInfo(newUser.getId(), newUser.getUsername(), newUser.getNickname());
         return new WxLoginResult(false, tokenService.createToken(info), toDTO(newUser));
     }
 
-    /** 调微信 code2session 换取 OpenID */
+    /** 调微信 code2session 换取 OpenID。 */
     private String code2Session(String code, String appId) {
         if (appId == null || appId.isBlank()) {
             throw new BusinessException(ErrorCode.PARAM_INVALID, "缺少 appId");
@@ -126,7 +149,6 @@ public class WxAuthService {
                 + "&js_code=" + code
                 + "&grant_type=authorization_code";
 
-        // 不打印完整 secret/code，避免生产日志泄露微信凭证；保留 appId 和脱敏 URL 足够排查选错配置的问题。
         String safeUrl = "https://api.weixin.qq.com/sns/jscode2session"
                 + "?appid=" + appId
                 + "&secret=" + maskSecret(appSecret)
@@ -178,11 +200,6 @@ public class WxAuthService {
             return "***";
         }
         return code.substring(0, 4) + "***" + code.substring(code.length() - 4);
-    }
-
-    /** OpenID 脱敏，日志不记录完整值 */
-    private String maskOpenid(String openid) {
-        return openid.substring(0, Math.min(6, openid.length()));
     }
 
     private UserDTO toDTO(User user) {
