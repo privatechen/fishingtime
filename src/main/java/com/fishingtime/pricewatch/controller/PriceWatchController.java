@@ -9,6 +9,7 @@ import com.fishingtime.pricewatch.dto.PriceHistoryPointResponse;
 import com.fishingtime.pricewatch.dto.PriceWatchCreateRequest;
 import com.fishingtime.pricewatch.dto.PriceWatchCreateResponse;
 import com.fishingtime.pricewatch.dto.PriceWatchListItemResponse;
+import com.fishingtime.pricewatch.dto.PriceguardPriceWatchCreateRequest;
 import com.fishingtime.pricewatch.service.JdShortLinkResolver;
 import com.fishingtime.pricewatch.service.PriceWatchService;
 import com.fishingtime.pricewatch.service.TaobaoShortLinkResolver;
@@ -51,6 +52,24 @@ public class PriceWatchController {
     public ApiResponse<PriceWatchCreateResponse> create(@CurrentUser CurrentUserInfo currentUser, @RequestBody PriceWatchCreateRequest request) {
         if (currentUser == null) throw new BusinessException(ErrorCode.UNAUTHORIZED);
         return ApiResponse.success(priceWatchService.create(currentUser.getUserId(), request));
+    }
+
+    /**
+     * Entry point for priceguard mini program.
+     * It intentionally keeps the original share text and delegates to the same
+     * create flow, so existing fishingtime behavior is unchanged.
+     */
+    @PostMapping("/priceguard")
+    public ApiResponse<PriceWatchCreateResponse> createFromPriceguard(@CurrentUser CurrentUserInfo currentUser,
+                                                                        @RequestBody PriceguardPriceWatchCreateRequest request) {
+        if (currentUser == null) throw new BusinessException(ErrorCode.UNAUTHORIZED);
+
+        PriceWatchCreateRequest inner = new PriceWatchCreateRequest();
+        inner.setProductUrl(request.getProductText());
+        inner.setPurchasePrice(request.getPurchasePrice());
+        inner.setWatchDays(request.getWatchDays());
+
+        return ApiResponse.success(priceWatchService.create(currentUser.getUserId(), inner));
     }
 
     @PostMapping("/resolve-taobao-link")
