@@ -12,8 +12,6 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 @Component
 public class TaobaoShortLinkPriceClient {
@@ -34,9 +32,12 @@ public class TaobaoShortLinkPriceClient {
     }
 
     public ResolveResult resolveAndCollect(String input) {
-        String shortUrl = extractShortUrl(input);
+        if (input == null || input.trim().isEmpty()) {
+            throw new BusinessException(ErrorCode.PARAM_INVALID, "商品分享内容不能为空");
+        }
+        String productText = input.trim();
         try {
-            String requestBody = objectMapper.writeValueAsString(java.util.Map.of("input", shortUrl));
+            String requestBody = objectMapper.writeValueAsString(java.util.Map.of("input", productText));
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(URI.create(priceToolBaseUrl + "/api/taobao/short-link/price"))
                     .timeout(Duration.ofSeconds(45))
@@ -52,34 +53,12 @@ public class TaobaoShortLinkPriceClient {
             if (itemId == null || !itemId.matches("\\d+")) {
                 throw new BusinessException(ErrorCode.PARAM_INVALID, "淘宝短链已访问，但没有识别到商品 ID");
             }
-            return new ResolveResult(itemId, shortUrl);
+            String shortUrl = text(root, "shortUrl");
+            return new ResolveResult(itemId, shortUrl == null ? productText : shortUrl);
         } catch (BusinessException e) {
             throw e;
         } catch (Exception e) {
             throw new BusinessException(ErrorCode.PARAM_INVALID, "淘宝短链解析失败，请确认本地 PriceTool 已启动后重试");
-        }
-    }
-
-    private String extractShortUrl(String input) {
-        if (input == null || input.trim().isEmpty()) {
-            throw new BusinessException(ErrorCode.PARAM_INVALID, "商品链接不能为空");
-        }
-        Matcher matcher = URL_PATTERN.matcher(input.trim());
-        if (!matcher.find()) {
-            throw new BusinessException(ErrorCode.PARAM_INVALID, "淘宝短链格式不正确");
-        }
-        String value = matcher.group().replaceAll("[，。！？；：、）》】」』]+$", "");
-        try {
-            URI uri = URI.create(value);
-            String host = uri.getHost();
-            if (host == null || !"m.tb.cn".equalsIgnoreCase(host)) {
-                throw new BusinessException(ErrorCode.PARAM_INVALID, "当前淘宝短链仅支持 m.tb.cn");
-            }
-            return value;
-        } catch (BusinessException e) {
-            throw e;
-        } catch (Exception e) {
-            throw new BusinessException(ErrorCode.PARAM_INVALID, "淘宝短链格式不正确");
         }
     }
 
