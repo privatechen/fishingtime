@@ -72,6 +72,30 @@ def find_best_promotion(value: Any, depth: int = 0) -> Optional[dict[str, Any]]:
     return None
 
 
+def find_sku_title(value: Any, depth: int = 0) -> Optional[str]:
+    if depth > 12:
+        return None
+    if isinstance(value, dict):
+        sku_head = value.get("skuHeadVO")
+        if isinstance(sku_head, dict):
+            title = sku_head.get("skuTitle")
+            if isinstance(title, str) and title.strip():
+                return title.strip()
+        title = value.get("skuTitle")
+        if isinstance(title, str) and title.strip():
+            return title.strip()
+        for child in value.values():
+            found = find_sku_title(child, depth + 1)
+            if found:
+                return found
+    elif isinstance(value, list):
+        for child in value:
+            found = find_sku_title(child, depth + 1)
+            if found:
+                return found
+    return None
+
+
 async def extract_dom_price(page: Page) -> Optional[dict[str, Any]]:
     for selector in [".summary-price .p-price .price", ".p-price .price", ".p-price"]:
         try:
@@ -91,15 +115,18 @@ async def collect_sku(page: Page, sku: str) -> dict[str, Any]:
     started_at = now_iso()
     ware_business_seen = False
     ware_business_hit: Optional[dict[str, Any]] = None
+    sku_title: Optional[str] = None
 
     async def on_response(response: Response) -> None:
-        nonlocal ware_business_seen, ware_business_hit
+        nonlocal ware_business_seen, ware_business_hit, sku_title
         response_url = response.url
         if "api.m.jd.com/" not in response_url or f"functionId={WARE_BUSINESS_FUNCTION}" not in response_url:
             return
         ware_business_seen = True
         try:
             data = await response.json()
+            if sku_title is None:
+                sku_title = find_sku_title(data)
             found = find_best_promotion(data)
             if found and ware_business_hit is None:
                 ware_business_hit = {
@@ -115,11 +142,12 @@ async def collect_sku(page: Page, sku: str) -> dict[str, Any]:
     try:
         await page.goto(url, wait_until="domcontentloaded", timeout=30_000)
         for _ in range(24):
-            if ware_business_hit is not None:
+            if ware_business_hit is not None and sku_title is not None:
                 break
             await page.wait_for_timeout(250)
 
-        title = await page.title()
+        page_title = (await page.title()).strip()
+        title = sku_title or re.sub(r"[-_—]\s*京东.*$", "", page_title).strip() or page_title
         dom_hit = None if ware_business_hit else await extract_dom_price(page)
         hit = ware_business_hit or dom_hit
         return {
@@ -133,7 +161,7 @@ async def collect_sku(page: Page, sku: str) -> dict[str, Any]:
         }
     except Exception as exc:
         return {
-            "sku": sku, "url": url, "title": "", "price": None, "source": None,
+            "sku": sku, "url": url, "title": sku_title or "", "price": None, "source": None,
             "checkedAt": now_iso(), "startedAt": started_at,
             "wareBusinessSeen": ware_business_seen, "bestPromotion": None,
             "ok": False, "error": str(exc),
@@ -147,7 +175,7 @@ async def main() -> None:
     if not skus:
         raise RuntimeError("skus.txt 里没有可用 SKU")
 
-    print(f"Price Agent Python v0.2 — 共 {len(skus)} 个 SKU")
+    print(f"Price Agent Python v0.3 — 共 {len(skus)} 个 SKU")
     print(f"连接现有 Chrome: {CDP_URL}")
 
     async with async_playwright() as p:
@@ -169,7 +197,7 @@ async def main() -> None:
             result = await collect_sku(page, sku)
             results.append(result)
             if result["ok"]:
-                print(f"¥{result['price']} ({result['source']})")
+                print(f"¥{result['price']} ({result['source']}) · {result['title']}")
             elif result["wareBusinessSeen"]:
                 print("未识别到价格（已捕获 wareBusiness，但未找到 purchasePrice）")
             else:
