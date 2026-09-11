@@ -152,9 +152,9 @@ public class PriceWatchService {
             param.setPurchasePrice(purchasePrice);
             param.setStartAt(startAt);
             param.setEndAt(endAt);
-            int inserted = priceWatchMapper.insert(param);
-            log.info("[PriceGuard盯价] 监控记录写入成功 userId={}, productId={}, watchId={}, affectedRows={}, endAt={}",
-                    userId, productId, param.getId(), inserted, endAt);
+            int affectedRows = priceWatchMapper.upsertForPriceguard(param);
+            log.info("[PriceGuard盯价] 监控记录保存成功 userId={}, productId={}, watchId={}, affectedRows={}, endAt={}",
+                    userId, productId, param.getId(), affectedRows, endAt);
 
             return PriceWatchCreateResponse.builder()
                     .watchId(param.getId())
