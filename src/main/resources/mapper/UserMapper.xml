@@ -10,6 +10,7 @@
         <result column="nickname" property="nickname"/>
         <result column="email" property="email"/>
         <result column="openid" property="openid"/>
+        <result column="wx_appid" property="wxAppid"/>
         <result column="avatar_url" property="avatarUrl"/>
         <result column="status" property="status"/>
         <result column="created_at" property="createdAt"/>
@@ -17,25 +18,42 @@
     </resultMap>
 
     <sql id="baseColumns">
-        id, username, nickname, email, openid, avatar_url, status, created_at, updated_at
+        id, username, nickname, email, openid, wx_appid, avatar_url, status, created_at, updated_at
     </sql>
 
     <insert id="insertUser" parameterType="User" useGeneratedKeys="true" keyProperty="id">
-        INSERT INTO user (username, password, nickname, email, openid, avatar_url, status)
-        VALUES (#{username}, #{password}, #{nickname}, #{email}, #{openid}, #{avatarUrl}, #{status})
+        INSERT INTO user (username, password, nickname, email, openid, wx_appid, avatar_url, status)
+        VALUES (#{username}, #{password}, #{nickname}, #{email}, #{openid}, #{wxAppid}, #{avatarUrl}, #{status})
     </insert>
 
     <select id="selectByUsername" resultMap="userResultMap">
-        SELECT id, username, password, nickname, email, openid, avatar_url, status, created_at, updated_at
+        SELECT id, username, password, nickname, email, openid, wx_appid, avatar_url, status, created_at, updated_at
         FROM user
         WHERE username = #{username}
     </select>
 
-    <select id="selectByOpenid" resultMap="userResultMap">
+    <select id="selectByOpenidAndAppId" resultMap="userResultMap">
         SELECT <include refid="baseColumns"/>
         FROM user
         WHERE openid = #{openid}
+          AND wx_appid = #{wxAppid}
+        LIMIT 1
     </select>
+
+    <select id="selectLegacyByOpenid" resultMap="userResultMap">
+        SELECT <include refid="baseColumns"/>
+        FROM user
+        WHERE openid = #{openid}
+          AND (wx_appid IS NULL OR wx_appid = '')
+        LIMIT 1
+    </select>
+
+    <update id="bindWxAppid">
+        UPDATE user
+        SET wx_appid = #{wxAppid}
+        WHERE id = #{id}
+          AND (wx_appid IS NULL OR wx_appid = '')
+    </update>
 
     <!-- 游客序号：昵称「人民xxxxx」里最大数字，无则 0 -->
     <select id="selectMaxGuestNo" resultType="java.lang.Long">
