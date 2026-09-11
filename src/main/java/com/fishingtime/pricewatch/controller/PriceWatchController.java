@@ -63,7 +63,13 @@ public class PriceWatchController {
     public ApiResponse<PriceWatchCreateResponse> createFromPriceguard(@CurrentUser CurrentUserInfo currentUser,
                                                                         @RequestBody PriceguardPriceWatchCreateRequest request) {
         if (currentUser == null) throw new BusinessException(ErrorCode.UNAUTHORIZED);
-        return ApiResponse.success(priceWatchService.createFromShareText(currentUser.getUserId(), request));
+
+        PriceWatchCreateRequest inner = new PriceWatchCreateRequest();
+        inner.setProductUrl(request.getProductText());
+        inner.setPurchasePrice(request.getPurchasePrice());
+        inner.setWatchDays(request.getWatchDays());
+
+        return ApiResponse.success(priceWatchService.create(currentUser.getUserId(), inner));
     }
 
     @PostMapping("/resolve-taobao-link")

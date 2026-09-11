@@ -6,7 +6,6 @@ import com.fishingtime.pricewatch.dto.PriceHistoryPointResponse;
 import com.fishingtime.pricewatch.dto.PriceWatchCreateRequest;
 import com.fishingtime.pricewatch.dto.PriceWatchCreateResponse;
 import com.fishingtime.pricewatch.dto.PriceWatchListItemResponse;
-import com.fishingtime.pricewatch.dto.PriceguardPriceWatchCreateRequest;
 import com.fishingtime.pricewatch.mapper.JdProductMapper;
 import com.fishingtime.pricewatch.mapper.PriceHistoryMapper;
 import com.fishingtime.pricewatch.mapper.PriceWatchMapper;
@@ -39,7 +38,7 @@ public class PriceWatchService {
     private final PriceWatchMapper priceWatchMapper;
     private final PriceHistoryMapper priceHistoryMapper;
     private final JdShortLinkResolver jdShortLinkResolver;
-    private final TaobaoShortLinkResolver taobaoShortLinkResolver;
+    private final TaobaoShortLinkPriceClient taobaoShortLinkPriceClient;
 
     @Transactional
     public PriceWatchCreateResponse create(Long userId, PriceWatchCreateRequest request) {
@@ -94,22 +93,6 @@ public class PriceWatchService {
                 .startAt(startAt)
                 .endAt(endAt)
                 .build();
-    }
-
-    /**
-     * Creates a watch from the original product share text supplied by priceguard.
-     * URL extraction, short-link resolution and product parsing all stay in the
-     * existing create/parseProduct flow.
-     */
-    @Transactional
-    public PriceWatchCreateResponse createFromShareText(Long userId, PriceguardPriceWatchCreateRequest request) {
-        if (request == null) throw new BusinessException(ErrorCode.PARAM_INVALID, "请求参数不能为空");
-
-        PriceWatchCreateRequest createRequest = new PriceWatchCreateRequest();
-        createRequest.setProductUrl(request.getProductText());
-        createRequest.setPurchasePrice(request.getPurchasePrice());
-        createRequest.setWatchDays(request.getWatchDays());
-        return create(userId, createRequest);
     }
 
     public List<PriceWatchListItemResponse> list(Long userId) {
@@ -176,11 +159,11 @@ public class PriceWatchService {
         }
 
         // Taobao/Tmall share text contains labels, token and title around the real m.tb.cn URL.
-        // Resolve only the product identity here. PriceTool collects prices asynchronously.
+        // Extract the actual short URL first, then call PriceTool with only that URL.
         String sharedUrl = extractFirstUrl(input);
         if (isTaobaoShortUrl(sharedUrl)) {
-            TaobaoShortLinkResolver.ResolveResult resolved = taobaoShortLinkResolver.resolve(sharedUrl);
-            return new ParsedProduct("TAOBAO", resolved.getItemId(), resolved.getSourceUrl());
+            TaobaoShortLinkPriceClient.ResolveResult resolved = taobaoShortLinkPriceClient.resolveAndCollect(sharedUrl);
+            return new ParsedProduct("TAOBAO", resolved.getItemId(), resolved.getShortUrl());
         }
 
         try {
