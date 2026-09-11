@@ -12,6 +12,7 @@ import com.fishingtime.pricewatch.mapper.PriceHistoryMapper;
 import com.fishingtime.pricewatch.mapper.PriceWatchMapper;
 import com.fishingtime.pricewatch.mapper.TaobaoProductMapper;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -26,6 +27,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class PriceWatchService {
@@ -102,46 +104,74 @@ public class PriceWatchService {
      */
     @Transactional
     public PriceWatchCreateResponse createFromPriceguard(Long userId, PriceguardPriceWatchCreateRequest request) {
-        if (userId == null) throw new BusinessException(ErrorCode.UNAUTHORIZED);
-        if (request == null) throw new BusinessException(ErrorCode.PARAM_INVALID, "请求参数不能为空");
+        int textLength = request == null || request.getProductText() == null
+                ? 0 : request.getProductText().length();
+        log.info("[PriceGuard盯价] 请求进入 userId={}, productTextLength={}, purchasePrice={}, watchDays={}",
+                userId, textLength, request == null ? null : request.getPurchasePrice(),
+                request == null ? null : request.getWatchDays());
 
-        String shortUrl = extractTaobaoShortUrl(request.getProductText());
-        BigDecimal purchasePrice = request.getPurchasePrice();
-        if (purchasePrice == null || purchasePrice.compareTo(BigDecimal.ZERO) <= 0) {
-            throw new BusinessException(ErrorCode.PARAM_INVALID, "购买价必须大于 0");
+        try {
+            if (userId == null) throw new BusinessException(ErrorCode.UNAUTHORIZED);
+            if (request == null) throw new BusinessException(ErrorCode.PARAM_INVALID, "请求参数不能为空");
+
+            String shortUrl = extractTaobaoShortUrl(request.getProductText());
+            log.info("[PriceGuard盯价] 淘宝短链提取成功 userId={}, shortUrl={}", userId, shortUrl);
+
+            BigDecimal purchasePrice = request.getPurchasePrice();
+            if (purchasePrice == null || purchasePrice.compareTo(BigDecimal.ZERO) <= 0) {
+                throw new BusinessException(ErrorCode.PARAM_INVALID, "购买价必须大于 0");
+            }
+            Integer watchDays = request.getWatchDays();
+            if (watchDays == null || watchDays < 1 || watchDays > 30) {
+                throw new BusinessException(ErrorCode.PARAM_INVALID, "监控天数仅支持 1 到 30 天");
+            }
+
+            Long productId = taobaoProductMapper.findIdByProductUrl(shortUrl);
+            if (productId == null) {
+                log.info("[PriceGuard盯价] 商品不存在，准备写入 taobao_product userId={}, shortUrl={}",
+                        userId, shortUrl);
+                int inserted = taobaoProductMapper.insertPending(shortUrl);
+                log.info("[PriceGuard盯价] taobao_product 写入完成 userId={}, affectedRows={}, shortUrl={}",
+                        userId, inserted, shortUrl);
+                productId = taobaoProductMapper.findIdByProductUrl(shortUrl);
+            } else {
+                log.info("[PriceGuard盯价] 复用已有淘宝商品 userId={}, productId={}, shortUrl={}",
+                        userId, productId, shortUrl);
+            }
+            if (productId == null) {
+                log.error("[PriceGuard盯价] 写入后未查询到商品 userId={}, shortUrl={}", userId, shortUrl);
+                throw new BusinessException(ErrorCode.SYSTEM_ERROR, "保存淘宝短链接失败");
+            }
+
+            LocalDateTime startAt = LocalDateTime.now();
+            LocalDateTime endAt = startAt.plusDays(watchDays);
+            PriceWatchMapper.PriceWatchInsertParam param = new PriceWatchMapper.PriceWatchInsertParam();
+            param.setUserId(userId);
+            param.setPlatform("TAOBAO");
+            param.setProductId(productId);
+            param.setPurchasePrice(purchasePrice);
+            param.setStartAt(startAt);
+            param.setEndAt(endAt);
+            int inserted = priceWatchMapper.insert(param);
+            log.info("[PriceGuard盯价] 监控记录写入成功 userId={}, productId={}, watchId={}, affectedRows={}, endAt={}",
+                    userId, productId, param.getId(), inserted, endAt);
+
+            return PriceWatchCreateResponse.builder()
+                    .watchId(param.getId())
+                    .platform("TAOBAO")
+                    .productUrl(shortUrl)
+                    .purchasePrice(purchasePrice)
+                    .watchDays(watchDays)
+                    .startAt(startAt)
+                    .endAt(endAt)
+                    .build();
+        } catch (BusinessException e) {
+            log.warn("[PriceGuard盯价] 业务失败 userId={}, message={}", userId, e.getMessage());
+            throw e;
+        } catch (Exception e) {
+            log.error("[PriceGuard盯价] 系统异常 userId={}, productTextLength={}", userId, textLength, e);
+            throw e;
         }
-        Integer watchDays = request.getWatchDays();
-        if (watchDays == null || watchDays < 1 || watchDays > 30) {
-            throw new BusinessException(ErrorCode.PARAM_INVALID, "监控天数仅支持 1 到 30 天");
-        }
-
-        Long productId = taobaoProductMapper.findIdByProductUrl(shortUrl);
-        if (productId == null) {
-            taobaoProductMapper.insertPending(shortUrl);
-            productId = taobaoProductMapper.findIdByProductUrl(shortUrl);
-        }
-        if (productId == null) throw new BusinessException(ErrorCode.SYSTEM_ERROR, "保存淘宝短链接失败");
-
-        LocalDateTime startAt = LocalDateTime.now();
-        LocalDateTime endAt = startAt.plusDays(watchDays);
-        PriceWatchMapper.PriceWatchInsertParam param = new PriceWatchMapper.PriceWatchInsertParam();
-        param.setUserId(userId);
-        param.setPlatform("TAOBAO");
-        param.setProductId(productId);
-        param.setPurchasePrice(purchasePrice);
-        param.setStartAt(startAt);
-        param.setEndAt(endAt);
-        priceWatchMapper.insert(param);
-
-        return PriceWatchCreateResponse.builder()
-                .watchId(param.getId())
-                .platform("TAOBAO")
-                .productUrl(shortUrl)
-                .purchasePrice(purchasePrice)
-                .watchDays(watchDays)
-                .startAt(startAt)
-                .endAt(endAt)
-                .build();
     }
 
     private String extractTaobaoShortUrl(String productText) {
