@@ -5,6 +5,7 @@ import com.fishingtime.pricewatch.mapper.PriceNotificationMapper;
 import lombok.RequiredArgsConstructor;
 import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
@@ -19,10 +20,13 @@ public class PriceNotificationService {
     private final PriceNotificationMapper notificationMapper;
     private final LocalDateTime startedAt = LocalDateTime.now();
 
+    @Value("${price-watch.notification-scan-delay-ms:30000}")
+    private long scanDelayMs;
+
     @PostConstruct
     public void started() {
         log.info("[站内降价通知] 定时任务已启动 scanDelayMs={}, startedAt={}",
-                30000, startedAt);
+                scanDelayMs, startedAt);
     }
 
     @Scheduled(fixedDelayString = "${price-watch.notification-scan-delay-ms:30000}")
