@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -77,7 +78,7 @@ public class PriceNotificationService {
                         .dropAmount(row.getDropAmount())
                         .createdAt(row.getCreatedAt())
                         .build())
-                .toList();
+                .collect(Collectors.toList());
     }
 
     public void markRead(Long userId, Long notificationId) {
