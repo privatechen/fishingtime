@@ -100,7 +100,7 @@ public class PriceWatchService {
 
     /**
      * Routes PriceGuard share text by short-link host. JD reuses the existing
-     * JD flow; Taobao stores the m.tb.cn URL for asynchronous processing.
+     * JD flow; Taobao stores the m.tb.cn/e.tb.cn URL for asynchronous processing.
      */
     @Transactional
     public PriceWatchCreateResponse createFromPriceguard(Long userId, PriceguardPriceWatchCreateRequest request) {
@@ -201,6 +201,10 @@ public class PriceWatchService {
         return false;
     }
 
+    private boolean isTaobaoShortLinkHost(String host) {
+        return "m.tb.cn".equalsIgnoreCase(host) || "e.tb.cn".equalsIgnoreCase(host);
+    }
+
     private String extractTaobaoShortUrl(String productText) {
         if (productText == null || productText.isBlank()) {
             throw new BusinessException(ErrorCode.PARAM_INVALID, "商品分享内容不能为空");
@@ -210,12 +214,12 @@ public class PriceWatchService {
             String value = matcher.group().replaceAll("[，。！？；：、）》】」』]+$", "");
             try {
                 URI uri = URI.create(value);
-                if ("m.tb.cn".equalsIgnoreCase(uri.getHost())) return value;
+                if (isTaobaoShortLinkHost(uri.getHost())) return value;
             } catch (Exception ignored) {
                 // Continue looking for another URL in the share text.
             }
         }
-        throw new BusinessException(ErrorCode.PARAM_INVALID, "未找到淘宝 m.tb.cn 短链接");
+        throw new BusinessException(ErrorCode.PARAM_INVALID, "未找到淘宝 m.tb.cn 或 e.tb.cn 短链接");
     }
 
     public List<PriceWatchListItemResponse> list(Long userId) {
@@ -283,7 +287,7 @@ public class PriceWatchService {
 
         // Fishingtime is only the entry point. Pass the complete Taobao/Tmall
         // sharing text to PriceTool; URL extraction and short-link resolution belong there.
-        if (input.toLowerCase().contains("m.tb.cn/")) {
+        if (input.toLowerCase().contains("m.tb.cn/") || input.toLowerCase().contains("e.tb.cn/")) {
             TaobaoShortLinkPriceClient.ResolveResult resolved = taobaoShortLinkPriceClient.resolveAndCollect(input);
             return new ParsedProduct("TAOBAO", resolved.getItemId(), resolved.getShortUrl());
         }
