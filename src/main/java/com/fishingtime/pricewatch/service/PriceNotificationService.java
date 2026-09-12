@@ -3,7 +3,7 @@ package com.fishingtime.pricewatch.service;
 import com.fishingtime.pricewatch.dto.PriceNotificationResponse;
 import com.fishingtime.pricewatch.mapper.PriceNotificationMapper;
 import lombok.RequiredArgsConstructor;
-import jakarta.annotation.PostConstruct;
+import javax.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
