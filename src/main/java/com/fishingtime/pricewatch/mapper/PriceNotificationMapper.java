@@ -13,113 +13,113 @@ import java.util.List;
 @Mapper
 public interface PriceNotificationMapper {
 
-    @Insert("""
-            INSERT IGNORE INTO price_notification
-                (user_id, watch_id, price_history_id, notification_type, product_title,
-                 current_price, comparison_price, drop_amount, is_read, created_at)
-            SELECT pw.user_id, pw.id, ph.id, 'BELOW_PURCHASE',
-                   CASE WHEN pw.platform = 'JD' THEN jp.title ELSE tp.title END,
-                   ph.price, pw.purchase_price, pw.purchase_price - ph.price, 0, ph.checked_at
-            FROM price_watch pw
-            JOIN price_history ph
-              ON ph.platform = pw.platform AND ph.product_id = pw.product_id
-            LEFT JOIN jd_product jp ON pw.platform = 'JD' AND jp.id = pw.product_id
-            LEFT JOIN taobao_product tp ON pw.platform = 'TAOBAO' AND tp.id = pw.product_id
-            WHERE pw.status = 1
-              AND ph.checked_at >= pw.start_at
-              AND ph.checked_at <= pw.end_at
-              AND ph.checked_at >= #{startedAt}
-              AND ph.price < pw.purchase_price
-              AND (
-                SELECT previous.price
-                FROM price_history previous
-                WHERE previous.platform = ph.platform
-                  AND previous.product_id = ph.product_id
-                  AND (previous.checked_at < ph.checked_at
-                       OR (previous.checked_at = ph.checked_at AND previous.id < ph.id))
-                ORDER BY previous.checked_at DESC, previous.id DESC
-                LIMIT 1
-              ) >= pw.purchase_price
-              OR (
-                pw.status = 1
-                AND ph.checked_at >= pw.start_at
-                AND ph.checked_at <= pw.end_at
-                AND ph.checked_at >= #{startedAt}
-                AND ph.price < pw.purchase_price
-                AND NOT EXISTS (
-                  SELECT 1 FROM price_history previous
-                  WHERE previous.platform = ph.platform
-                    AND previous.product_id = ph.product_id
-                    AND (previous.checked_at < ph.checked_at
-                         OR (previous.checked_at = ph.checked_at AND previous.id < ph.id))
-                )
-              )
-            """)
+    @Insert({
+            "INSERT IGNORE INTO price_notification ",
+            "(user_id, watch_id, price_history_id, notification_type, product_title, ",
+            "current_price, comparison_price, drop_amount, is_read, created_at) ",
+            "SELECT pw.user_id, pw.id, ph.id, 'BELOW_PURCHASE', ",
+            "CASE WHEN pw.platform = 'JD' THEN jp.title ELSE tp.title END, ",
+            "ph.price, pw.purchase_price, pw.purchase_price - ph.price, 0, ph.checked_at ",
+            "FROM price_watch pw ",
+            "JOIN price_history ph ",
+            "ON ph.platform = pw.platform AND ph.product_id = pw.product_id ",
+            "LEFT JOIN jd_product jp ON pw.platform = 'JD' AND jp.id = pw.product_id ",
+            "LEFT JOIN taobao_product tp ON pw.platform = 'TAOBAO' AND tp.id = pw.product_id ",
+            "WHERE pw.status = 1 ",
+            "AND ph.checked_at >= pw.start_at ",
+            "AND ph.checked_at <= pw.end_at ",
+            "AND ph.checked_at >= #{startedAt} ",
+            "AND ph.price < pw.purchase_price ",
+            "AND ( ",
+            "SELECT previous.price ",
+            "FROM price_history previous ",
+            "WHERE previous.platform = ph.platform ",
+            "AND previous.product_id = ph.product_id ",
+            "AND (previous.checked_at < ph.checked_at ",
+            "OR (previous.checked_at = ph.checked_at AND previous.id < ph.id)) ",
+            "ORDER BY previous.checked_at DESC, previous.id DESC ",
+            "LIMIT 1 ",
+            ") >= pw.purchase_price ",
+            "OR ( ",
+            "pw.status = 1 ",
+            "AND ph.checked_at >= pw.start_at ",
+            "AND ph.checked_at <= pw.end_at ",
+            "AND ph.checked_at >= #{startedAt} ",
+            "AND ph.price < pw.purchase_price ",
+            "AND NOT EXISTS ( ",
+            "SELECT 1 FROM price_history previous ",
+            "WHERE previous.platform = ph.platform ",
+            "AND previous.product_id = ph.product_id ",
+            "AND (previous.checked_at < ph.checked_at ",
+            "OR (previous.checked_at = ph.checked_at AND previous.id < ph.id)) ",
+            ") ",
+            ")"
+    })
     int insertBelowPurchasePriceNotifications(@Param("startedAt") LocalDateTime startedAt);
 
-    @Insert("""
-            INSERT IGNORE INTO price_notification
-                (user_id, watch_id, price_history_id, notification_type, product_title,
-                 current_price, comparison_price, drop_amount, is_read, created_at)
-            SELECT pw.user_id, pw.id, ph.id, 'BELOW_PREVIOUS',
-                   CASE WHEN pw.platform = 'JD' THEN jp.title ELSE tp.title END,
-                   ph.price,
-                   (SELECT previous.price
-                    FROM price_history previous
-                    WHERE previous.platform = ph.platform
-                      AND previous.product_id = ph.product_id
-                      AND (previous.checked_at < ph.checked_at
-                           OR (previous.checked_at = ph.checked_at AND previous.id < ph.id))
-                    ORDER BY previous.checked_at DESC, previous.id DESC
-                    LIMIT 1),
-                   (SELECT previous.price
-                    FROM price_history previous
-                    WHERE previous.platform = ph.platform
-                      AND previous.product_id = ph.product_id
-                      AND (previous.checked_at < ph.checked_at
-                           OR (previous.checked_at = ph.checked_at AND previous.id < ph.id))
-                    ORDER BY previous.checked_at DESC, previous.id DESC
-                    LIMIT 1) - ph.price,
-                   0, ph.checked_at
-            FROM price_watch pw
-            JOIN price_history ph
-              ON ph.platform = pw.platform AND ph.product_id = pw.product_id
-            LEFT JOIN jd_product jp ON pw.platform = 'JD' AND jp.id = pw.product_id
-            LEFT JOIN taobao_product tp ON pw.platform = 'TAOBAO' AND tp.id = pw.product_id
-            WHERE pw.status = 1
-              AND ph.checked_at >= pw.start_at
-              AND ph.checked_at <= pw.end_at
-              AND ph.checked_at >= #{startedAt}
-              AND ph.price < (
-                SELECT previous.price
-                FROM price_history previous
-                WHERE previous.platform = ph.platform
-                  AND previous.product_id = ph.product_id
-                  AND (previous.checked_at < ph.checked_at
-                       OR (previous.checked_at = ph.checked_at AND previous.id < ph.id))
-                ORDER BY previous.checked_at DESC, previous.id DESC
-                LIMIT 1
-              )
-            """)
+    @Insert({
+            "INSERT IGNORE INTO price_notification ",
+            "(user_id, watch_id, price_history_id, notification_type, product_title, ",
+            "current_price, comparison_price, drop_amount, is_read, created_at) ",
+            "SELECT pw.user_id, pw.id, ph.id, 'BELOW_PREVIOUS', ",
+            "CASE WHEN pw.platform = 'JD' THEN jp.title ELSE tp.title END, ",
+            "ph.price, ",
+            "(SELECT previous.price ",
+            "FROM price_history previous ",
+            "WHERE previous.platform = ph.platform ",
+            "AND previous.product_id = ph.product_id ",
+            "AND (previous.checked_at < ph.checked_at ",
+            "OR (previous.checked_at = ph.checked_at AND previous.id < ph.id)) ",
+            "ORDER BY previous.checked_at DESC, previous.id DESC ",
+            "LIMIT 1), ",
+            "(SELECT previous.price ",
+            "FROM price_history previous ",
+            "WHERE previous.platform = ph.platform ",
+            "AND previous.product_id = ph.product_id ",
+            "AND (previous.checked_at < ph.checked_at ",
+            "OR (previous.checked_at = ph.checked_at AND previous.id < ph.id)) ",
+            "ORDER BY previous.checked_at DESC, previous.id DESC ",
+            "LIMIT 1) - ph.price, ",
+            "0, ph.checked_at ",
+            "FROM price_watch pw ",
+            "JOIN price_history ph ",
+            "ON ph.platform = pw.platform AND ph.product_id = pw.product_id ",
+            "LEFT JOIN jd_product jp ON pw.platform = 'JD' AND jp.id = pw.product_id ",
+            "LEFT JOIN taobao_product tp ON pw.platform = 'TAOBAO' AND tp.id = pw.product_id ",
+            "WHERE pw.status = 1 ",
+            "AND ph.checked_at >= pw.start_at ",
+            "AND ph.checked_at <= pw.end_at ",
+            "AND ph.checked_at >= #{startedAt} ",
+            "AND ph.price < ( ",
+            "SELECT previous.price ",
+            "FROM price_history previous ",
+            "WHERE previous.platform = ph.platform ",
+            "AND previous.product_id = ph.product_id ",
+            "AND (previous.checked_at < ph.checked_at ",
+            "OR (previous.checked_at = ph.checked_at AND previous.id < ph.id)) ",
+            "ORDER BY previous.checked_at DESC, previous.id DESC ",
+            "LIMIT 1 ",
+            ")"
+    })
     int insertBelowPreviousPriceNotifications(@Param("startedAt") LocalDateTime startedAt);
 
-    @Select("""
-            SELECT id, watch_id AS watchId, notification_type AS type,
-                   product_title AS productTitle, current_price AS currentPrice,
-                   comparison_price AS comparisonPrice, drop_amount AS dropAmount,
-                   created_at AS createdAt
-            FROM price_notification
-            WHERE user_id = #{userId} AND is_read = 0
-            ORDER BY created_at DESC, id DESC
-            LIMIT 50
-            """)
+    @Select({
+            "SELECT id, watch_id AS watchId, notification_type AS type, ",
+            "product_title AS productTitle, current_price AS currentPrice, ",
+            "comparison_price AS comparisonPrice, drop_amount AS dropAmount, ",
+            "created_at AS createdAt ",
+            "FROM price_notification ",
+            "WHERE user_id = #{userId} AND is_read = 0 ",
+            "ORDER BY created_at DESC, id DESC ",
+            "LIMIT 50"
+    })
     List<NotificationRow> findUnreadByUser(@Param("userId") Long userId);
 
-    @Update("""
-            UPDATE price_notification
-            SET is_read = 1, read_at = NOW()
-            WHERE id = #{notificationId} AND user_id = #{userId} AND is_read = 0
-            """)
+    @Update({
+            "UPDATE price_notification ",
+            "SET is_read = 1, read_at = NOW() ",
+            "WHERE id = #{notificationId} AND user_id = #{userId} AND is_read = 0"
+    })
     int markRead(@Param("userId") Long userId, @Param("notificationId") Long notificationId);
 
     class NotificationRow {
