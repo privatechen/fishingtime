@@ -279,9 +279,9 @@ public class PriceWatchService {
     public List<PriceHistoryPointResponse> history(Long userId, Long watchId, Integer days) {
         if (userId == null) throw new BusinessException(ErrorCode.UNAUTHORIZED);
         if (watchId == null || watchId <= 0) throw new BusinessException(ErrorCode.PARAM_INVALID, "监控记录不能为空");
-        int queryDays = days == null ? 15 : days;
-        if (queryDays != 15 && queryDays != 30) {
-            throw new BusinessException(ErrorCode.PARAM_INVALID, "历史报价仅支持 15 或 30 天");
+        int queryDays = days == null ? 7 : days;
+        if (queryDays != 7 && queryDays != 15) {
+            throw new BusinessException(ErrorCode.PARAM_INVALID, "历史报价仅支持 7 或 15 天");
         }
         PriceWatchMapper.PriceWatchTarget target = priceWatchMapper.findTargetByWatchAndUser(watchId, userId);
         if (target == null || target.getProductId() == null) {
