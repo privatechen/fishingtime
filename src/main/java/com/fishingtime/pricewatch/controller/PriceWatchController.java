@@ -50,7 +50,7 @@ public class PriceWatchController {
     @GetMapping("/{watchId}/history")
     public ApiResponse<List<PriceHistoryPointResponse>> history(@CurrentUser CurrentUserInfo currentUser,
                                                                  @PathVariable Long watchId,
-                                                                 @RequestParam(required = false, defaultValue = "30") Integer days) {
+                                                                 @RequestParam(required = false, defaultValue = "7") Integer days) {
         if (currentUser == null) throw new BusinessException(ErrorCode.UNAUTHORIZED);
         return ApiResponse.success(priceWatchService.history(currentUser.getUserId(), watchId, days));
     }
