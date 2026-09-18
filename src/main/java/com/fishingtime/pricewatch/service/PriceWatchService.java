@@ -256,6 +256,7 @@ public class PriceWatchService {
                     .lowPriceEventCount(row.getLowPriceEventCount())
                     .lowPriceEvents(lowPriceEvents)
                     .watchDays(calculateWatchDays(row.getStartAt(), row.getEndAt()))
+                    .remainingDays(row.getRemainingDays() == null ? 0 : Math.max(0, row.getRemainingDays()))
                     .startAt(row.getStartAt())
                     .endAt(row.getEndAt())
                     .status(row.getStatus())
