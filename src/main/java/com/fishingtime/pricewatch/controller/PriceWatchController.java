@@ -9,6 +9,7 @@ import com.fishingtime.pricewatch.dto.PriceHistoryPointResponse;
 import com.fishingtime.pricewatch.dto.PriceWatchCreateRequest;
 import com.fishingtime.pricewatch.dto.PriceWatchCreateResponse;
 import com.fishingtime.pricewatch.dto.PriceWatchListItemResponse;
+import com.fishingtime.pricewatch.dto.PriceWatchSummaryResponse;
 import com.fishingtime.pricewatch.dto.PriceguardPriceWatchCreateRequest;
 import com.fishingtime.pricewatch.service.JdShortLinkResolver;
 import com.fishingtime.pricewatch.service.PriceWatchService;
@@ -38,6 +39,12 @@ public class PriceWatchController {
     public ApiResponse<List<PriceWatchListItemResponse>> list(@CurrentUser CurrentUserInfo currentUser) {
         if (currentUser == null) throw new BusinessException(ErrorCode.UNAUTHORIZED);
         return ApiResponse.success(priceWatchService.list(currentUser.getUserId()));
+    }
+
+    @GetMapping("/summary")
+    public ApiResponse<PriceWatchSummaryResponse> summary(@CurrentUser CurrentUserInfo currentUser) {
+        if (currentUser == null) throw new BusinessException(ErrorCode.UNAUTHORIZED);
+        return ApiResponse.success(priceWatchService.summary(currentUser.getUserId()));
     }
 
     @GetMapping("/{watchId}/history")
