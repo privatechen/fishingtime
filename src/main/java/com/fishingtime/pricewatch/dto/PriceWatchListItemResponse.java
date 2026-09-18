@@ -18,6 +18,11 @@ public class PriceWatchListItemResponse {
     private String title;
     private BigDecimal currentPrice;
     private BigDecimal purchasePrice;
+    private BigDecimal firstPrice;
+    private LocalDateTime firstCheckedAt;
+    private BigDecimal lowestPrice;
+    private LocalDateTime lowestPriceAt;
+    private Integer lowPriceEventCount;
     private Integer watchDays;
     private LocalDateTime startAt;
     private LocalDateTime endAt;
