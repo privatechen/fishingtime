@@ -132,9 +132,53 @@ public interface PriceNotificationMapper {
     })
     int markRead(@Param("userId") Long userId, @Param("notificationId") Long notificationId);
 
+    @Select({
+            "SELECT n.id, n.user_id AS userId, n.watch_id AS watchId, ",
+            "n.price_history_id AS priceHistoryId, n.notification_type AS type, ",
+            "n.product_title AS productTitle, n.current_price AS currentPrice, ",
+            "n.comparison_price AS comparisonPrice, n.drop_amount AS dropAmount, ",
+            "n.created_at AS createdAt ",
+            "FROM price_notification n ",
+            "JOIN price_watch_subscription s ",
+            "ON s.user_id = n.user_id ",
+            "AND s.watch_id = n.watch_id ",
+            "AND s.template_id = #{templateId} ",
+            "AND s.available_count > 0 ",
+            "AND n.created_at >= s.last_granted_at ",
+            "WHERE n.wechat_status = 'PENDING' ",
+            "AND n.created_at >= #{startedAt} ",
+            "AND (n.notification_type = 'BELOW_PREVIOUS' OR NOT EXISTS (",
+            "  SELECT 1 FROM price_notification sibling ",
+            "  WHERE sibling.watch_id = n.watch_id ",
+            "  AND sibling.price_history_id = n.price_history_id ",
+            "  AND sibling.notification_type = 'BELOW_PREVIOUS'",
+            ")) ",
+            "ORDER BY n.created_at ASC, n.id ASC ",
+            "LIMIT 50"
+    })
+    List<NotificationRow> findWechatCandidates(@Param("templateId") String templateId,
+                                               @Param("startedAt") LocalDateTime startedAt);
+
+    @Update({
+            "UPDATE price_notification ",
+            "SET wechat_status = 'SENT', wechat_sent_at = NOW(), wechat_error = NULL ",
+            "WHERE id = #{notificationId} AND wechat_status = 'PENDING'"
+    })
+    int markWechatSent(@Param("notificationId") Long notificationId);
+
+    @Update({
+            "UPDATE price_notification ",
+            "SET wechat_status = 'FAILED', wechat_error = #{error} ",
+            "WHERE id = #{notificationId} AND wechat_status = 'PENDING'"
+    })
+    int markWechatFailed(@Param("notificationId") Long notificationId,
+                         @Param("error") String error);
+
     class NotificationRow {
         private Long id;
+        private Long userId;
         private Long watchId;
+        private Long priceHistoryId;
         private String type;
         private String productTitle;
         private BigDecimal currentPrice;
@@ -143,7 +187,11 @@ public interface PriceNotificationMapper {
         private LocalDateTime createdAt;
         public Long getId() { return id; }
         public void setId(Long id) { this.id = id; }
+        public Long getUserId() { return userId; }
+        public void setUserId(Long userId) { this.userId = userId; }
         public Long getWatchId() { return watchId; }
+        public Long getPriceHistoryId() { return priceHistoryId; }
+        public void setPriceHistoryId(Long priceHistoryId) { this.priceHistoryId = priceHistoryId; }
         public void setWatchId(Long watchId) { this.watchId = watchId; }
         public String getType() { return type; }
         public void setType(String type) { this.type = type; }
