@@ -13,6 +13,7 @@ import com.fishingtime.pricewatch.dto.PriceWatchSummaryResponse;
 import com.fishingtime.pricewatch.dto.PriceguardPriceWatchCreateRequest;
 import com.fishingtime.pricewatch.service.JdShortLinkResolver;
 import com.fishingtime.pricewatch.service.PriceWatchService;
+import com.fishingtime.pricewatch.service.PriceNotificationService;
 import com.fishingtime.pricewatch.service.TaobaoShortLinkResolver;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -32,6 +33,7 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class PriceWatchController {
     private final PriceWatchService priceWatchService;
+    private final PriceNotificationService priceNotificationService;
     private final TaobaoShortLinkResolver taobaoShortLinkResolver;
     private final JdShortLinkResolver jdShortLinkResolver;
 
@@ -81,6 +83,14 @@ public class PriceWatchController {
     @PostMapping("/resolve-jd-link")
     public ApiResponse<JdShortLinkResolver.ResolveResult> resolveJdLink(@RequestBody Map<String, String> request) {
         return ApiResponse.success(jdShortLinkResolver.resolve(request.get("input")));
+    }
+
+    @PostMapping("/{watchId}/wechat-subscription")
+    public ApiResponse<Void> grantWechatSubscription(@CurrentUser CurrentUserInfo currentUser,
+                                                      @PathVariable Long watchId) {
+        if (currentUser == null) throw new BusinessException(ErrorCode.UNAUTHORIZED);
+        priceNotificationService.grantWechatSubscription(currentUser.getUserId(), watchId);
+        return ApiResponse.success();
     }
 
     @DeleteMapping("/{watchId}")
