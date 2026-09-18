@@ -26,6 +26,7 @@ public class PriceWatchListItemResponse {
     private Integer lowPriceEventCount;
     private List<PriceLowEventResponse> lowPriceEvents;
     private Integer watchDays;
+    private Integer remainingDays;
     private LocalDateTime startAt;
     private LocalDateTime endAt;
     private Integer status;
