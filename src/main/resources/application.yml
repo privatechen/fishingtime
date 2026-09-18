@@ -49,6 +49,11 @@ wechat:
     - appid: wx179588d3efbcc6fb
       secret: ${WX_SECRET_PRICEGUARD:}
 
+# PriceGuard 降价通知
+price-watch:
+  notification-scan-delay-ms: 30000
+  wechat-template-id: ${WX_PRICE_DROP_TEMPLATE_ID:SH59Aabm4qEo0P2RwMN3cENfCdtxU4bLdG9UJew5ZE4}
+
 # 快手热榜 API（普通 10 分钟刷新）
 kuaishou:
   hotlist-api: https://api.tcslw.cn/api/hotlist/kuaishou
