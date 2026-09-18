@@ -18,7 +18,7 @@
     <description>FishingTime 娱乐网站</description>
 
     <properties>
-        <java.version>11</java.version>
+        <java.version>17</java.version>
         <mybatis-spring-boot.version>2.3.2</mybatis-spring-boot.version>
     </properties>
 
