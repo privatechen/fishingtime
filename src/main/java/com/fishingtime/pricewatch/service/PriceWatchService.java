@@ -3,6 +3,7 @@ package com.fishingtime.pricewatch.service;
 import com.fishingtime.common.dto.ErrorCode;
 import com.fishingtime.common.exception.BusinessException;
 import com.fishingtime.pricewatch.dto.PriceHistoryPointResponse;
+import com.fishingtime.pricewatch.dto.PriceLowEventResponse;
 import com.fishingtime.pricewatch.dto.PriceWatchCreateRequest;
 import com.fishingtime.pricewatch.dto.PriceWatchCreateResponse;
 import com.fishingtime.pricewatch.dto.PriceWatchListItemResponse;
@@ -227,6 +228,17 @@ public class PriceWatchService {
         if (userId == null) throw new BusinessException(ErrorCode.UNAUTHORIZED);
         return priceWatchMapper.findByUserId(userId).stream().map(row -> {
             boolean jd = "JD".equals(row.getPlatform());
+            List<PriceLowEventResponse> lowPriceEvents = priceHistoryMapper
+                    .findLowPriceEvents(row.getWatchId(), userId, 2)
+                    .stream()
+                    .map(event -> PriceLowEventResponse.builder()
+                            .checkedAt(event.getCheckedAt())
+                            .price(event.getPrice())
+                            .difference(row.getPurchasePrice() == null || event.getPrice() == null
+                                    ? BigDecimal.ZERO
+                                    : row.getPurchasePrice().subtract(event.getPrice()).max(BigDecimal.ZERO))
+                            .build())
+                    .collect(Collectors.toList());
             return PriceWatchListItemResponse.builder()
                     .watchId(row.getWatchId())
                     .platform(row.getPlatform())
@@ -242,6 +254,7 @@ public class PriceWatchService {
                     .lowestPrice(row.getLowestPrice())
                     .lowestPriceAt(row.getLowestPriceAt())
                     .lowPriceEventCount(row.getLowPriceEventCount())
+                    .lowPriceEvents(lowPriceEvents)
                     .watchDays(calculateWatchDays(row.getStartAt(), row.getEndAt()))
                     .startAt(row.getStartAt())
                     .endAt(row.getEndAt())
