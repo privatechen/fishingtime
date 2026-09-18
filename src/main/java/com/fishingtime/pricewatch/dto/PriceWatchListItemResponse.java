@@ -5,6 +5,7 @@ import lombok.Data;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Data
 @Builder
@@ -23,6 +24,7 @@ public class PriceWatchListItemResponse {
     private BigDecimal lowestPrice;
     private LocalDateTime lowestPriceAt;
     private Integer lowPriceEventCount;
+    private List<PriceLowEventResponse> lowPriceEvents;
     private Integer watchDays;
     private LocalDateTime startAt;
     private LocalDateTime endAt;
