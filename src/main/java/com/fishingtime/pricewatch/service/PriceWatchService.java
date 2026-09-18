@@ -6,6 +6,7 @@ import com.fishingtime.pricewatch.dto.PriceHistoryPointResponse;
 import com.fishingtime.pricewatch.dto.PriceWatchCreateRequest;
 import com.fishingtime.pricewatch.dto.PriceWatchCreateResponse;
 import com.fishingtime.pricewatch.dto.PriceWatchListItemResponse;
+import com.fishingtime.pricewatch.dto.PriceWatchSummaryResponse;
 import com.fishingtime.pricewatch.dto.PriceguardPriceWatchCreateRequest;
 import com.fishingtime.pricewatch.mapper.JdProductMapper;
 import com.fishingtime.pricewatch.mapper.PriceHistoryMapper;
@@ -54,8 +55,8 @@ public class PriceWatchService {
             throw new BusinessException(ErrorCode.PARAM_INVALID, "购买价必须大于 0");
         }
         Integer watchDays = request.getWatchDays();
-        if (watchDays == null || (watchDays != 7 && watchDays != 15 && watchDays != 30)) {
-            throw new BusinessException(ErrorCode.PARAM_INVALID, "监控天数仅支持 7、15 或 30 天");
+        if (watchDays == null || watchDays < 1 || watchDays > 30) {
+            throw new BusinessException(ErrorCode.PARAM_INVALID, "监控天数仅支持 1 到 30 天");
         }
 
         Long productId;
@@ -114,6 +115,15 @@ public class PriceWatchService {
             if (userId == null) throw new BusinessException(ErrorCode.UNAUTHORIZED);
             if (request == null) throw new BusinessException(ErrorCode.PARAM_INVALID, "请求参数不能为空");
 
+            BigDecimal purchasePrice = request.getPurchasePrice();
+            if (purchasePrice == null || purchasePrice.compareTo(BigDecimal.ZERO) <= 0) {
+                throw new BusinessException(ErrorCode.PARAM_INVALID, "参考购买价必须大于 0");
+            }
+            Integer watchDays = request.getWatchDays();
+            if (watchDays == null || watchDays < 1 || watchDays > 15) {
+                throw new BusinessException(ErrorCode.PARAM_INVALID, "PriceGuard 监控天数仅支持 1 到 15 天");
+            }
+
             String productText = request.getProductText();
             if (containsJdShortUrl(productText)) {
                 log.info("[PriceGuard盯价] 识别为京东分享文案，进入原有京东流程 userId={}", userId);
@@ -129,15 +139,6 @@ public class PriceWatchService {
 
             String shortUrl = extractTaobaoShortUrl(productText);
             log.info("[PriceGuard盯价] 识别为淘宝分享文案，短链提取成功 userId={}, shortUrl={}", userId, shortUrl);
-
-            BigDecimal purchasePrice = request.getPurchasePrice();
-            if (purchasePrice == null || purchasePrice.compareTo(BigDecimal.ZERO) <= 0) {
-                throw new BusinessException(ErrorCode.PARAM_INVALID, "购买价必须大于 0");
-            }
-            Integer watchDays = request.getWatchDays();
-            if (watchDays == null || watchDays < 1 || watchDays > 30) {
-                throw new BusinessException(ErrorCode.PARAM_INVALID, "监控天数仅支持 1 到 30 天");
-            }
 
             Long productId = taobaoProductMapper.findIdByProductUrl(shortUrl);
             if (productId == null) {
@@ -236,6 +237,11 @@ public class PriceWatchService {
                     .title(row.getTitle())
                     .currentPrice(row.getCurrentPrice())
                     .purchasePrice(row.getPurchasePrice())
+                    .firstPrice(row.getFirstPrice())
+                    .firstCheckedAt(row.getFirstCheckedAt())
+                    .lowestPrice(row.getLowestPrice())
+                    .lowestPriceAt(row.getLowestPriceAt())
+                    .lowPriceEventCount(row.getLowPriceEventCount())
                     .watchDays(calculateWatchDays(row.getStartAt(), row.getEndAt()))
                     .startAt(row.getStartAt())
                     .endAt(row.getEndAt())
@@ -244,6 +250,16 @@ public class PriceWatchService {
                     .available(Integer.valueOf(1).equals(row.getProductStatus()))
                     .build();
         }).collect(Collectors.toList());
+    }
+
+    public PriceWatchSummaryResponse summary(Long userId) {
+        if (userId == null) throw new BusinessException(ErrorCode.UNAUTHORIZED);
+        PriceWatchMapper.PriceWatchSummaryRow row = priceWatchMapper.findSummaryByUserId(userId);
+        return PriceWatchSummaryResponse.builder()
+                .totalWatchCount(row == null || row.getTotalWatchCount() == null ? 0 : row.getTotalWatchCount())
+                .lowPriceEventCount(row == null || row.getLowPriceEventCount() == null ? 0 : row.getLowPriceEventCount())
+                .cumulativeDifference(row == null || row.getCumulativeDifference() == null ? BigDecimal.ZERO : row.getCumulativeDifference())
+                .build();
     }
 
     public List<PriceHistoryPointResponse> history(Long userId, Long watchId, Integer days) {
@@ -257,7 +273,9 @@ public class PriceWatchService {
         if (target == null || target.getProductId() == null) {
             throw new BusinessException(ErrorCode.PARAM_INVALID, "监控记录不存在");
         }
-        return priceHistoryMapper.findDailyLastPrices(target.getPlatform(), target.getProductId(), queryDays).stream()
+        return priceHistoryMapper.findDailyLastPrices(
+                        target.getPlatform(), target.getProductId(), target.getStartAt(), target.getEndAt(), queryDays)
+                .stream()
                 .map(row -> PriceHistoryPointResponse.builder().date(row.getPriceDate()).price(row.getPrice()).build())
                 .collect(Collectors.toList());
     }
