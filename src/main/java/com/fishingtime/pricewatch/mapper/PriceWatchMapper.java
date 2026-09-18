@@ -31,6 +31,7 @@ public interface PriceWatchMapper {
     int upsertForPriceguard(PriceWatchInsertParam param);
 
     @Select({
+            "SELECT ordered.* FROM (",
             "SELECT pw.id AS watchId, pw.platform AS platform, ",
             "CASE WHEN pw.platform = 'JD' THEN jp.sku_id ELSE tp.item_id END AS platformProductId, ",
             "CASE WHEN pw.platform = 'JD' THEN jp.product_url ELSE tp.product_url END AS productUrl, ",
@@ -74,13 +75,18 @@ public interface PriceWatchMapper {
             "   ORDER BY previous.checked_at DESC, previous.id DESC LIMIT 1",
             " ) >= pw.purchase_price)",
             ") AS lowPriceEventCount, ",
-            "pw.start_at AS startAt, pw.end_at AS endAt, pw.status AS status, ",
+            "pw.start_at AS startAt, pw.end_at AS endAt, ",
+            "CAST(GREATEST(CEIL(TIMESTAMPDIFF(SECOND, NOW(), pw.end_at) / 86400.0), 0) AS SIGNED) AS remainingDays, ",
+            "pw.status AS status, ",
             "CASE WHEN pw.platform = 'JD' THEN jp.status ELSE tp.status END AS productStatus ",
             "FROM price_watch pw ",
             "LEFT JOIN jd_product jp ON pw.platform = 'JD' AND jp.id = pw.product_id ",
             "LEFT JOIN taobao_product tp ON pw.platform = 'TAOBAO' AND tp.id = pw.product_id ",
             "WHERE pw.user_id = #{userId} AND pw.status = 1 ",
-            "ORDER BY pw.start_at DESC, pw.id DESC"
+            ") ordered ",
+            "ORDER BY CASE WHEN ordered.currentPrice IS NULL THEN 1 ELSE 0 END ASC, ",
+            "(ordered.purchasePrice - ordered.currentPrice) DESC, ",
+            "ordered.remainingDays ASC, ordered.watchId DESC"
     })
     List<PriceWatchListRow> findByUserId(@Param("userId") Long userId);
 
@@ -194,6 +200,7 @@ public interface PriceWatchMapper {
         private Integer lowPriceEventCount;
         private LocalDateTime startAt;
         private LocalDateTime endAt;
+        private Integer remainingDays;
         private Integer status;
         private Integer productStatus;
 
@@ -227,6 +234,8 @@ public interface PriceWatchMapper {
         public void setStartAt(LocalDateTime startAt) { this.startAt = startAt; }
         public LocalDateTime getEndAt() { return endAt; }
         public void setEndAt(LocalDateTime endAt) { this.endAt = endAt; }
+        public Integer getRemainingDays() { return remainingDays; }
+        public void setRemainingDays(Integer remainingDays) { this.remainingDays = remainingDays; }
         public Integer getStatus() { return status; }
         public void setStatus(Integer status) { this.status = status; }
         public Integer getProductStatus() { return productStatus; }
