@@ -30,22 +30,92 @@ public interface PriceWatchMapper {
     @Options(useGeneratedKeys = true, keyProperty = "id")
     int upsertForPriceguard(PriceWatchInsertParam param);
 
-    @Select("SELECT pw.id AS watchId, pw.platform AS platform, " +
-            "CASE WHEN pw.platform = 'JD' THEN jp.sku_id ELSE tp.item_id END AS platformProductId, " +
-            "CASE WHEN pw.platform = 'JD' THEN jp.product_url ELSE tp.product_url END AS productUrl, " +
-            "CASE WHEN pw.platform = 'JD' THEN jp.image_url ELSE tp.image_url END AS imageUrl, " +
-            "CASE WHEN pw.platform = 'JD' THEN jp.title ELSE tp.title END AS title, " +
-            "CASE WHEN pw.platform = 'JD' THEN jp.current_price ELSE tp.current_price END AS currentPrice, " +
-            "pw.purchase_price AS purchasePrice, pw.start_at AS startAt, pw.end_at AS endAt, pw.status AS status, " +
-            "CASE WHEN pw.platform = 'JD' THEN jp.status ELSE tp.status END AS productStatus " +
-            "FROM price_watch pw " +
-            "LEFT JOIN jd_product jp ON pw.platform = 'JD' AND jp.id = pw.product_id " +
-            "LEFT JOIN taobao_product tp ON pw.platform = 'TAOBAO' AND tp.id = pw.product_id " +
-            "WHERE pw.user_id = #{userId} AND pw.status = 1 " +
-            "ORDER BY pw.start_at DESC, pw.id DESC")
+    @Select({
+            "SELECT pw.id AS watchId, pw.platform AS platform, ",
+            "CASE WHEN pw.platform = 'JD' THEN jp.sku_id ELSE tp.item_id END AS platformProductId, ",
+            "CASE WHEN pw.platform = 'JD' THEN jp.product_url ELSE tp.product_url END AS productUrl, ",
+            "CASE WHEN pw.platform = 'JD' THEN jp.image_url ELSE tp.image_url END AS imageUrl, ",
+            "CASE WHEN pw.platform = 'JD' THEN jp.title ELSE tp.title END AS title, ",
+            "CASE WHEN pw.platform = 'JD' THEN jp.current_price ELSE tp.current_price END AS currentPrice, ",
+            "pw.purchase_price AS purchasePrice, ",
+            "(SELECT ph.price FROM price_history ph ",
+            " WHERE ph.platform = pw.platform AND ph.product_id = pw.product_id ",
+            " AND ph.checked_at >= pw.start_at AND ph.checked_at <= pw.end_at ",
+            " ORDER BY ph.checked_at ASC, ph.id ASC LIMIT 1) AS firstPrice, ",
+            "(SELECT ph.checked_at FROM price_history ph ",
+            " WHERE ph.platform = pw.platform AND ph.product_id = pw.product_id ",
+            " AND ph.checked_at >= pw.start_at AND ph.checked_at <= pw.end_at ",
+            " ORDER BY ph.checked_at ASC, ph.id ASC LIMIT 1) AS firstCheckedAt, ",
+            "(SELECT ph.price FROM price_history ph ",
+            " WHERE ph.platform = pw.platform AND ph.product_id = pw.product_id ",
+            " AND ph.checked_at >= pw.start_at AND ph.checked_at <= pw.end_at ",
+            " ORDER BY ph.price ASC, ph.checked_at ASC, ph.id ASC LIMIT 1) AS lowestPrice, ",
+            "(SELECT ph.checked_at FROM price_history ph ",
+            " WHERE ph.platform = pw.platform AND ph.product_id = pw.product_id ",
+            " AND ph.checked_at >= pw.start_at AND ph.checked_at <= pw.end_at ",
+            " ORDER BY ph.price ASC, ph.checked_at ASC, ph.id ASC LIMIT 1) AS lowestPriceAt, ",
+            "(SELECT COUNT(*) FROM price_history ph ",
+            " WHERE ph.platform = pw.platform AND ph.product_id = pw.product_id ",
+            " AND ph.checked_at >= pw.start_at AND ph.checked_at <= pw.end_at ",
+            " AND ph.price < pw.purchase_price ",
+            " AND (NOT EXISTS (",
+            "   SELECT 1 FROM price_history previous ",
+            "   WHERE previous.platform = ph.platform AND previous.product_id = ph.product_id ",
+            "   AND previous.checked_at >= pw.start_at AND previous.checked_at <= pw.end_at ",
+            "   AND (previous.checked_at < ph.checked_at OR (previous.checked_at = ph.checked_at AND previous.id < ph.id))",
+            " ) OR (",
+            "   SELECT previous.price FROM price_history previous ",
+            "   WHERE previous.platform = ph.platform AND previous.product_id = ph.product_id ",
+            "   AND previous.checked_at >= pw.start_at AND previous.checked_at <= pw.end_at ",
+            "   AND (previous.checked_at < ph.checked_at OR (previous.checked_at = ph.checked_at AND previous.id < ph.id)) ",
+            "   ORDER BY previous.checked_at DESC, previous.id DESC LIMIT 1",
+            " ) >= pw.purchase_price)",
+            ") AS lowPriceEventCount, ",
+            "pw.start_at AS startAt, pw.end_at AS endAt, pw.status AS status, ",
+            "CASE WHEN pw.platform = 'JD' THEN jp.status ELSE tp.status END AS productStatus ",
+            "FROM price_watch pw ",
+            "LEFT JOIN jd_product jp ON pw.platform = 'JD' AND jp.id = pw.product_id ",
+            "LEFT JOIN taobao_product tp ON pw.platform = 'TAOBAO' AND tp.id = pw.product_id ",
+            "WHERE pw.user_id = #{userId} AND pw.status = 1 ",
+            "ORDER BY pw.start_at DESC, pw.id DESC"
+    })
     List<PriceWatchListRow> findByUserId(@Param("userId") Long userId);
 
-    @Select("SELECT platform, product_id AS productId FROM price_watch WHERE id = #{watchId} AND user_id = #{userId} LIMIT 1")
+    @Select({
+            "SELECT COUNT(*) AS totalWatchCount, ",
+            "COALESCE(SUM(summary_items.lowPriceEventCount), 0) AS lowPriceEventCount, ",
+            "COALESCE(SUM(summary_items.maxDifference), 0) AS cumulativeDifference ",
+            "FROM (",
+            " SELECT pw.id, ",
+            " (SELECT COUNT(*) FROM price_history ph ",
+            "  WHERE ph.platform = pw.platform AND ph.product_id = pw.product_id ",
+            "  AND ph.checked_at >= pw.start_at AND ph.checked_at <= pw.end_at ",
+            "  AND ph.price < pw.purchase_price ",
+            "  AND (NOT EXISTS (",
+            "    SELECT 1 FROM price_history previous ",
+            "    WHERE previous.platform = ph.platform AND previous.product_id = ph.product_id ",
+            "    AND previous.checked_at >= pw.start_at AND previous.checked_at <= pw.end_at ",
+            "    AND (previous.checked_at < ph.checked_at OR (previous.checked_at = ph.checked_at AND previous.id < ph.id))",
+            "  ) OR (",
+            "    SELECT previous.price FROM price_history previous ",
+            "    WHERE previous.platform = ph.platform AND previous.product_id = ph.product_id ",
+            "    AND previous.checked_at >= pw.start_at AND previous.checked_at <= pw.end_at ",
+            "    AND (previous.checked_at < ph.checked_at OR (previous.checked_at = ph.checked_at AND previous.id < ph.id)) ",
+            "    ORDER BY previous.checked_at DESC, previous.id DESC LIMIT 1",
+            "  ) >= pw.purchase_price)",
+            " ) AS lowPriceEventCount, ",
+            " GREATEST(pw.purchase_price - COALESCE((",
+            "   SELECT MIN(ph2.price) FROM price_history ph2 ",
+            "   WHERE ph2.platform = pw.platform AND ph2.product_id = pw.product_id ",
+            "   AND ph2.checked_at >= pw.start_at AND ph2.checked_at <= pw.end_at",
+            " ), pw.purchase_price), 0) AS maxDifference ",
+            " FROM price_watch pw WHERE pw.user_id = #{userId}",
+            ") summary_items"
+    })
+    PriceWatchSummaryRow findSummaryByUserId(@Param("userId") Long userId);
+
+    @Select("SELECT platform, product_id AS productId, start_at AS startAt, end_at AS endAt " +
+            "FROM price_watch WHERE id = #{watchId} AND user_id = #{userId} LIMIT 1")
     PriceWatchTarget findTargetByWatchAndUser(@Param("watchId") Long watchId, @Param("userId") Long userId);
 
     @Update("UPDATE price_watch SET status = 0 WHERE id = #{watchId} AND user_id = #{userId} AND status = 1")
@@ -79,10 +149,30 @@ public interface PriceWatchMapper {
     class PriceWatchTarget {
         private String platform;
         private Long productId;
+        private LocalDateTime startAt;
+        private LocalDateTime endAt;
+
         public String getPlatform() { return platform; }
         public void setPlatform(String platform) { this.platform = platform; }
         public Long getProductId() { return productId; }
         public void setProductId(Long productId) { this.productId = productId; }
+        public LocalDateTime getStartAt() { return startAt; }
+        public void setStartAt(LocalDateTime startAt) { this.startAt = startAt; }
+        public LocalDateTime getEndAt() { return endAt; }
+        public void setEndAt(LocalDateTime endAt) { this.endAt = endAt; }
+    }
+
+    class PriceWatchSummaryRow {
+        private Integer totalWatchCount;
+        private Integer lowPriceEventCount;
+        private BigDecimal cumulativeDifference;
+
+        public Integer getTotalWatchCount() { return totalWatchCount; }
+        public void setTotalWatchCount(Integer totalWatchCount) { this.totalWatchCount = totalWatchCount; }
+        public Integer getLowPriceEventCount() { return lowPriceEventCount; }
+        public void setLowPriceEventCount(Integer lowPriceEventCount) { this.lowPriceEventCount = lowPriceEventCount; }
+        public BigDecimal getCumulativeDifference() { return cumulativeDifference; }
+        public void setCumulativeDifference(BigDecimal cumulativeDifference) { this.cumulativeDifference = cumulativeDifference; }
     }
 
     class PriceWatchListRow {
@@ -94,6 +184,11 @@ public interface PriceWatchMapper {
         private String title;
         private BigDecimal currentPrice;
         private BigDecimal purchasePrice;
+        private BigDecimal firstPrice;
+        private LocalDateTime firstCheckedAt;
+        private BigDecimal lowestPrice;
+        private LocalDateTime lowestPriceAt;
+        private Integer lowPriceEventCount;
         private LocalDateTime startAt;
         private LocalDateTime endAt;
         private Integer status;
@@ -115,6 +210,16 @@ public interface PriceWatchMapper {
         public void setCurrentPrice(BigDecimal currentPrice) { this.currentPrice = currentPrice; }
         public BigDecimal getPurchasePrice() { return purchasePrice; }
         public void setPurchasePrice(BigDecimal purchasePrice) { this.purchasePrice = purchasePrice; }
+        public BigDecimal getFirstPrice() { return firstPrice; }
+        public void setFirstPrice(BigDecimal firstPrice) { this.firstPrice = firstPrice; }
+        public LocalDateTime getFirstCheckedAt() { return firstCheckedAt; }
+        public void setFirstCheckedAt(LocalDateTime firstCheckedAt) { this.firstCheckedAt = firstCheckedAt; }
+        public BigDecimal getLowestPrice() { return lowestPrice; }
+        public void setLowestPrice(BigDecimal lowestPrice) { this.lowestPrice = lowestPrice; }
+        public LocalDateTime getLowestPriceAt() { return lowestPriceAt; }
+        public void setLowestPriceAt(LocalDateTime lowestPriceAt) { this.lowestPriceAt = lowestPriceAt; }
+        public Integer getLowPriceEventCount() { return lowPriceEventCount; }
+        public void setLowPriceEventCount(Integer lowPriceEventCount) { this.lowPriceEventCount = lowPriceEventCount; }
         public LocalDateTime getStartAt() { return startAt; }
         public void setStartAt(LocalDateTime startAt) { this.startAt = startAt; }
         public LocalDateTime getEndAt() { return endAt; }
