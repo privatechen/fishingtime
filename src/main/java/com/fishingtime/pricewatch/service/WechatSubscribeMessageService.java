@@ -70,7 +70,7 @@ public class WechatSubscribeMessageService {
             ObjectNode body = objectMapper.createObjectNode();
             body.put("touser", openid);
             body.put("template_id", templateId);
-            body.put("page", "pages/history/history?watchId=" + notification.getWatchId());
+            body.put("page", "pages/index/index?watchId=" + notification.getWatchId());
             body.put("miniprogram_state", "formal");
             body.put("lang", "zh_CN");
 
