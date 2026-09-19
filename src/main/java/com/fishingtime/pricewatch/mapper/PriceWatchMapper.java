@@ -120,6 +120,39 @@ public interface PriceWatchMapper {
     })
     PriceWatchSummaryRow findSummaryByUserId(@Param("userId") Long userId);
 
+    @Select({
+            "SELECT COUNT(*) AS totalWatchCount, ",
+            "COALESCE(SUM(summary_items.lowPriceEventCount), 0) AS lowPriceEventCount, ",
+            "COALESCE(SUM(summary_items.maxDifference), 0) AS cumulativeDifference ",
+            "FROM (",
+            " SELECT pw.id, ",
+            " (SELECT COUNT(*) FROM price_history ph ",
+            "  WHERE ph.platform = pw.platform AND ph.product_id = pw.product_id ",
+            "  AND ph.checked_at >= pw.start_at AND ph.checked_at <= pw.end_at ",
+            "  AND ph.price < pw.purchase_price ",
+            "  AND (NOT EXISTS (",
+            "    SELECT 1 FROM price_history previous ",
+            "    WHERE previous.platform = ph.platform AND previous.product_id = ph.product_id ",
+            "    AND previous.checked_at >= pw.start_at AND previous.checked_at <= pw.end_at ",
+            "    AND (previous.checked_at < ph.checked_at OR (previous.checked_at = ph.checked_at AND previous.id < ph.id))",
+            "  ) OR (",
+            "    SELECT previous.price FROM price_history previous ",
+            "    WHERE previous.platform = ph.platform AND previous.product_id = ph.product_id ",
+            "    AND previous.checked_at >= pw.start_at AND previous.checked_at <= pw.end_at ",
+            "    AND (previous.checked_at < ph.checked_at OR (previous.checked_at = ph.checked_at AND previous.id < ph.id)) ",
+            "    ORDER BY previous.checked_at DESC, previous.id DESC LIMIT 1",
+            "  ) >= pw.purchase_price)",
+            " ) AS lowPriceEventCount, ",
+            " GREATEST(pw.purchase_price - COALESCE((",
+            "   SELECT MIN(ph2.price) FROM price_history ph2 ",
+            "   WHERE ph2.platform = pw.platform AND ph2.product_id = pw.product_id ",
+            "   AND ph2.checked_at >= pw.start_at AND ph2.checked_at <= pw.end_at",
+            " ), pw.purchase_price), 0) AS maxDifference ",
+            " FROM price_watch pw",
+            ") summary_items"
+    })
+    PriceWatchSummaryRow findGlobalSummary();
+
     @Select("SELECT platform, product_id AS productId, start_at AS startAt, end_at AS endAt " +
             "FROM price_watch WHERE id = #{watchId} AND user_id = #{userId} LIMIT 1")
     PriceWatchTarget findTargetByWatchAndUser(@Param("watchId") Long watchId, @Param("userId") Long userId);
