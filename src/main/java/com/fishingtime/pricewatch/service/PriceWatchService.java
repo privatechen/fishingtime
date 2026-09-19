@@ -276,6 +276,15 @@ public class PriceWatchService {
                 .build();
     }
 
+    public PriceWatchSummaryResponse publicSummary() {
+        PriceWatchMapper.PriceWatchSummaryRow row = priceWatchMapper.findGlobalSummary();
+        return PriceWatchSummaryResponse.builder()
+                .totalWatchCount(row == null || row.getTotalWatchCount() == null ? 0 : row.getTotalWatchCount())
+                .lowPriceEventCount(row == null || row.getLowPriceEventCount() == null ? 0 : row.getLowPriceEventCount())
+                .cumulativeDifference(row == null || row.getCumulativeDifference() == null ? BigDecimal.ZERO : row.getCumulativeDifference())
+                .build();
+    }
+
     public List<PriceHistoryPointResponse> history(Long userId, Long watchId, Integer days) {
         if (userId == null) throw new BusinessException(ErrorCode.UNAUTHORIZED);
         if (watchId == null || watchId <= 0) throw new BusinessException(ErrorCode.PARAM_INVALID, "监控记录不能为空");
