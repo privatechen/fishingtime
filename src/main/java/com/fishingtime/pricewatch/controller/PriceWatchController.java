@@ -43,6 +43,11 @@ public class PriceWatchController {
         return ApiResponse.success(priceWatchService.list(currentUser.getUserId()));
     }
 
+    @GetMapping("/public-summary")
+    public ApiResponse<PriceWatchSummaryResponse> publicSummary() {
+        return ApiResponse.success(priceWatchService.publicSummary());
+    }
+
     @GetMapping("/summary")
     public ApiResponse<PriceWatchSummaryResponse> summary(@CurrentUser CurrentUserInfo currentUser) {
         if (currentUser == null) throw new BusinessException(ErrorCode.UNAUTHORIZED);
