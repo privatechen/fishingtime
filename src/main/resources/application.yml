@@ -64,3 +64,16 @@ app:
     image-dir: /home/projects/focusimages
     admin-user: admin
     admin-password: admin
+
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include:
+          - health
+          - metrics
+
+  endpoint:
+    health:
+      show-details: always
