@@ -1,6 +1,5 @@
 package com.fishingtime.diagnostics;
 
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -16,11 +15,9 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Bounded, manually triggered CPU load for diagnosis validation.
- * Disabled by default. Enable with -Ddiagnostics.cpu-burn.enabled=true.
  */
 @RestController
 @RequestMapping("/internal/diagnostics")
-@ConditionalOnProperty(name = "diagnostics.cpu-burn.enabled", havingValue = "true")
 public class CpuBurnController {
 
     private static final int THREAD_COUNT = 2;
