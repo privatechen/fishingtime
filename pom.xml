@@ -56,7 +56,7 @@
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
-            <optional>true</optionaL>
+            <optional>true</optional>
         </dependency>
         <dependency>
             <groupId>org.jsoup</groupId>
