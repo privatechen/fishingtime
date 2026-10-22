@@ -1,6 +1,5 @@
 package com.fishingtime.diagnostics;
 
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -22,15 +21,10 @@ import java.util.concurrent.TimeUnit;
 /**
  * Bounded JVM heap pressure simulation for end-to-end memory alert testing.
  *
- * Disabled by default. Enable explicitly with:
- * --diagnostics.memory-pressure.enabled=true
+ * Uses the same header gate as CpuBurnController: method=memory.
  */
 @RestController
 @RequestMapping("/internal/diagnostics")
-@ConditionalOnProperty(
-        name = "diagnostics.memory-pressure.enabled",
-        havingValue = "true"
-)
 public class MemoryPressureController {
 
     private static final int CHUNK_BYTES = 1024 * 1024;
