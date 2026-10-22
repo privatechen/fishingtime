@@ -28,8 +28,8 @@ import java.util.concurrent.TimeUnit;
 public class MemoryPressureController {
 
     private static final int CHUNK_BYTES = 1024 * 1024;
-    private static final long MAX_HELD_BYTES = 96L * 1024 * 1024;
-    private static final int MAX_DURATION_SECONDS = 60;
+    private static final long MAX_HELD_BYTES = 256L * 1024 * 1024;
+    private static final int MAX_DURATION_SECONDS = 120;
     private static final double MIN_TARGET_RATIO = 0.81;
     private static final double MAX_TARGET_RATIO = 0.85;
 
@@ -42,7 +42,7 @@ public class MemoryPressureController {
     private volatile String status = "IDLE";
     private volatile String stopReason = "NOT_STARTED";
     private volatile double targetRatio = 0.82;
-    private volatile int durationSeconds = 45;
+    private volatile int durationSeconds = 90;
     private volatile long startedAtMillis;
     private volatile long allocatedBytes;
     private volatile long heldBytes;
@@ -51,7 +51,7 @@ public class MemoryPressureController {
     public ResponseEntity<Map<String, Object>> start(
             @RequestHeader(value = "method", required = false) String method,
             @RequestParam(defaultValue = "0.82") double targetRatio,
-            @RequestParam(defaultValue = "45") int durationSeconds) {
+            @RequestParam(defaultValue = "90") int durationSeconds) {
 
         if (!"memory".equals(method)) {
             return response(HttpStatus.FORBIDDEN,
@@ -67,7 +67,7 @@ public class MemoryPressureController {
 
         if (durationSeconds < 1 || durationSeconds > MAX_DURATION_SECONDS) {
             return response(HttpStatus.BAD_REQUEST,
-                    Map.of("error", "durationSeconds must be between 1 and 60"));
+                    Map.of("error", "durationSeconds must be between 1 and 120"));
         }
 
         synchronized (this) {
@@ -102,7 +102,7 @@ public class MemoryPressureController {
                 return thread;
             });
             this.scheduledTask = executor.scheduleWithFixedDelay(
-                    this::allocateStepSafely, 0, 500, TimeUnit.MILLISECONDS);
+                    this::allocateStepSafely, 0, 250, TimeUnit.MILLISECONDS);
 
             Map<String, Object> body = new HashMap<>();
             body.put("status", status);
