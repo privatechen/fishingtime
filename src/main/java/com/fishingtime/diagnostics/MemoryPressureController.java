@@ -28,7 +28,8 @@ import java.util.concurrent.TimeUnit;
 public class MemoryPressureController {
 
     private static final int CHUNK_BYTES = 1024 * 1024;
-    private static final long MAX_HELD_BYTES = 256L * 1024 * 1024;
+    private static final long MAX_HELD_MIB = 256L;
+    private static final long MIB = 1024L * 1024L;
     private static final int MAX_DURATION_SECONDS = 120;
     private static final double MIN_TARGET_RATIO = 0.81;
     private static final double MAX_TARGET_RATIO = 0.85;
@@ -43,6 +44,7 @@ public class MemoryPressureController {
     private volatile String stopReason = "NOT_STARTED";
     private volatile double targetRatio = 0.82;
     private volatile int durationSeconds = 90;
+    private volatile long maxHeldBytes = 256L * MIB;
     private volatile long startedAtMillis;
     private volatile long allocatedBytes;
     private volatile long heldBytes;
@@ -51,7 +53,8 @@ public class MemoryPressureController {
     public ResponseEntity<Map<String, Object>> start(
             @RequestHeader(value = "method", required = false) String method,
             @RequestParam(defaultValue = "0.82") double targetRatio,
-            @RequestParam(defaultValue = "90") int durationSeconds) {
+            @RequestParam(defaultValue = "90") int durationSeconds,
+            @RequestParam(defaultValue = "256") long maxHeldMiB) {
 
         if (!"memory".equals(method)) {
             return response(HttpStatus.FORBIDDEN,
@@ -68,6 +71,11 @@ public class MemoryPressureController {
         if (durationSeconds < 1 || durationSeconds > MAX_DURATION_SECONDS) {
             return response(HttpStatus.BAD_REQUEST,
                     Map.of("error", "durationSeconds must be between 1 and 120"));
+        }
+
+        if (maxHeldMiB < 1 || maxHeldMiB > MAX_HELD_MIB) {
+            return response(HttpStatus.BAD_REQUEST,
+                    Map.of("error", "maxHeldMiB must be between 1 and 256"));
         }
 
         synchronized (this) {
@@ -88,6 +96,7 @@ public class MemoryPressureController {
 
             this.targetRatio = targetRatio;
             this.durationSeconds = durationSeconds;
+            this.maxHeldBytes = maxHeldMiB * MIB;
             this.startedAtMillis = System.currentTimeMillis();
             this.allocatedBytes = 0L;
             this.heldBytes = 0L;
@@ -108,7 +117,8 @@ public class MemoryPressureController {
             body.put("status", status);
             body.put("targetRatio", targetRatio);
             body.put("durationSeconds", durationSeconds);
-            body.put("maxHeldBytes", MAX_HELD_BYTES);
+            body.put("maxHeldMiB", maxHeldMiB);
+            body.put("maxHeldBytes", maxHeldBytes);
             body.put("heapBefore", heapBefore);
             body.put("message", "Memory pressure simulation started");
             return response(HttpStatus.ACCEPTED, body);
@@ -131,9 +141,11 @@ public class MemoryPressureController {
             body.put("stopReason", stopReason);
             body.put("targetRatio", targetRatio);
             body.put("durationSeconds", durationSeconds);
+            body.put("maxHeldMiB", maxHeldBytes / MIB);
+            body.put("maxHeldBytes", maxHeldBytes);
             body.put("allocatedBytes", allocatedBytes);
             body.put("heldBytes", heldBytes);
-            body.put("maxHeldBytes", MAX_HELD_BYTES);
+            body.put("maxHeldBytes", maxHeldBytes);
             body.put("heap", heapSnapshot());
             return ResponseEntity.ok(body);
         }
@@ -186,7 +198,7 @@ public class MemoryPressureController {
                     return;
                 }
 
-                if (heldBytes + CHUNK_BYTES > MAX_HELD_BYTES) {
+                if (heldBytes + CHUNK_BYTES > maxHeldBytes) {
                     stopInternal("ALLOCATION_CAP_REACHED");
                     return;
                 }
