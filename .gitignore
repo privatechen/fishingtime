@@ -30,3 +30,6 @@ webapp/node/
 
 # 本地开发目录（《细节》图片本地存储，不入库）
 local-images/
+
+# Generated Vite production build (packaged into the Spring Boot JAR)
+webapp/dist/
