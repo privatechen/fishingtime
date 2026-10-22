@@ -11,7 +11,9 @@ export default defineConfig({
   },
   base: '/',
   build: {
-    outDir: resolve(__dirname, '../src/main/resources/static'),
+    // Keep generated frontend files out of src/main/resources.
+    // Maven copies this directory into target/classes/static at package time.
+    outDir: resolve(__dirname, 'dist'),
     emptyOutDir: true,
   },
   server: {

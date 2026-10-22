@@ -35,3 +35,6 @@ local-images/
 # Keep source images/resources, ignore Vite generated js/css bundles
 src/main/resources/static/assets/*.js
 src/main/resources/static/assets/*.css
+
+# Generated Vite production build (packaged into the Spring Boot JAR)
+webapp/dist/
