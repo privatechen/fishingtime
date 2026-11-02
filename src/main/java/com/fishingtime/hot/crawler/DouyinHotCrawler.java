@@ -62,6 +62,7 @@ public class DouyinHotCrawler implements HotCrawler {
         try {
             HttpRequest req = HttpRequest.newBuilder()
                     .uri(URI.create(apiUrl + "?type=douyin"))
+                    .timeout(Duration.ofSeconds(15))
                     .header("Authorization", "Bearer " + apiKey)
                     .header("Accept", "application/json")
                     .GET()
@@ -79,7 +80,7 @@ public class DouyinHotCrawler implements HotCrawler {
                     result.size(), System.currentTimeMillis() - start);
             return result.size() > 50 ? result.subList(0, 50) : result;
         } catch (Exception e) {
-            log.error("[抖音热榜] 抓取异常: {}", e.getMessage());
+            log.error("[抖音热榜] 抓取异常: {}", e.getMessage(), e);
             return List.of();
         }
     }

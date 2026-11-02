@@ -41,20 +41,22 @@ public class HotService {
     @PostConstruct
     public void init() {
         log.info("[热榜] 启动初始化，共 {} 个平台", crawlers.size());
-        crawlers.forEach(this::refresh);
+        refreshCrawlers(crawlers, "启动初始化", 0);
     }
 
     @Scheduled(fixedDelay = 600_000)
     public void scheduledRefresh() {
         log.info("[热榜] 定时刷新开始");
         // 常规 10 分钟刷新只刷非限流平台（抖音等有额度限制的走独立调度）
-        crawlers.stream().filter(c -> !c.quotaLimited()).forEach(this::refresh);
+        CrawlerSelection selection = selectCrawlers(false);
+        refreshCrawlers(selection.targets(), "定时刷新", selection.failures());
     }
 
     /** 独立限流调度：只刷新 quotaLimited 平台（抖音热榜，2-6 点 30min / 其余 15min） */
     public void refreshQuotaLimited() {
         log.info("[热榜] 限流平台刷新开始");
-        crawlers.stream().filter(HotCrawler::quotaLimited).forEach(this::refresh);
+        CrawlerSelection selection = selectCrawlers(true);
+        refreshCrawlers(selection.targets(), "限流平台刷新", selection.failures());
     }
 
     /** 获取某平台的热榜数据及刷新时间。 */
@@ -79,23 +81,72 @@ public class HotService {
         return (hour >= 2 && hour < 6) ? 30 : 15;
     }
 
-    private void refresh(HotCrawler crawler) {
-        String platform = crawler.platform();
+    private void refreshCrawlers(List<HotCrawler> targets, String taskName, int initialFailures) {
+        int succeeded = 0;
+        int failed = initialFailures;
+        long startedAt = System.currentTimeMillis();
+
+        for (HotCrawler crawler : targets) {
+            if (refresh(crawler)) {
+                succeeded++;
+            } else {
+                failed++;
+            }
+        }
+
+        long elapsedMs = System.currentTimeMillis() - startedAt;
+        if (failed > 0) {
+            log.error("[热榜] {}结束，成功={}，失败={}，总耗时={}ms；失败平台保留旧缓存",
+                    taskName, succeeded, failed, elapsedMs);
+        } else {
+            log.info("[热榜] {}结束，成功={}，失败=0，总耗时={}ms",
+                    taskName, succeeded, elapsedMs);
+        }
+    }
+
+    private CrawlerSelection selectCrawlers(boolean quotaLimited) {
+        List<HotCrawler> targets = new java.util.ArrayList<>();
+        int failures = 0;
+        for (HotCrawler crawler : crawlers) {
+            try {
+                if (crawler.quotaLimited() == quotaLimited) {
+                    targets.add(crawler);
+                }
+            } catch (Exception e) {
+                failures++;
+                log.error("[热榜] 读取抓取器限流配置失败，跳过本轮刷新，抓取器={}，原因={}",
+                        crawler.getClass().getName(), e.getMessage(), e);
+            }
+        }
+        return new CrawlerSelection(targets, failures);
+    }
+
+    private record CrawlerSelection(List<HotCrawler> targets, int failures) {}
+
+    private boolean refresh(HotCrawler crawler) {
+        long startedAt = System.currentTimeMillis();
         try {
+            String platform = crawler.platform();
+            boolean quotaLimited = crawler.quotaLimited();
             List<HotItemDTO> data = crawler.fetch();
             if (data != null && !data.isEmpty()) {
-                cache.put(platform, data);
                 String now = LocalDateTime.now().toString();
-                updateTimeMap.put(platform, now);
                 // 限流平台（抖音）按时间窗口算下次刷新；其余固定 10 分钟
-                int nextMinutes = crawler.quotaLimited() ? intervalFor(LocalDateTime.now().getHour()) : 10;
+                int nextMinutes = quotaLimited ? intervalFor(LocalDateTime.now().getHour()) : 10;
+                cache.put(platform, data);
+                updateTimeMap.put(platform, now);
                 nextRefreshTimeMap.put(platform, LocalDateTime.now().plusMinutes(nextMinutes).toString());
                 log.info("[热榜] {} 刷新成功，{} 条，下次 {}min 后", platform, data.size(), nextMinutes);
+                return true;
             } else {
-                log.warn("[热榜] {} 刷新结果为空，保留旧缓存", platform);
+                log.error("[热榜] {} 抓取失败：返回空结果，耗时={}ms，保留旧缓存",
+                        platform, System.currentTimeMillis() - startedAt);
+                return false;
             }
         } catch (Exception e) {
-            log.error("[热榜] {} 刷新异常: {}", platform, e.getMessage());
+            log.error("[热榜] 抓取器执行失败：抓取器={}，耗时={}ms，保留旧缓存，原因={}",
+                    crawler.getClass().getName(), System.currentTimeMillis() - startedAt, e.getMessage(), e);
+            return false;
         }
     }
 

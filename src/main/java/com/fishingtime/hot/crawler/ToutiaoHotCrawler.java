@@ -53,6 +53,7 @@ public class ToutiaoHotCrawler implements HotCrawler {
         try {
             HttpRequest req = HttpRequest.newBuilder()
                     .uri(URI.create(API_URL))
+                    .timeout(Duration.ofSeconds(15))
                     .header("User-Agent", USER_AGENT)
                     .header("Accept", "application/json")
                     .GET()
@@ -70,7 +71,7 @@ public class ToutiaoHotCrawler implements HotCrawler {
                     result.size(), System.currentTimeMillis() - start);
             return result.size() > 50 ? result.subList(0, 50) : result;
         } catch (Exception e) {
-            log.error("[头条热榜] 抓取异常: {}", e.getMessage());
+            log.error("[头条热榜] 抓取异常: {}", e.getMessage(), e);
             return List.of();
         }
     }

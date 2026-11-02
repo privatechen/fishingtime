@@ -56,7 +56,7 @@ public class HupuHotCrawler implements HotCrawler {
                     result.size(), System.currentTimeMillis() - start);
             return result;
         } catch (Exception e) {
-            log.error("[虎扑热榜] 抓取异常: {}", e.getMessage());
+            log.error("[虎扑热榜] 抓取异常: {}", e.getMessage(), e);
             return List.of();
         }
     }

@@ -100,6 +100,7 @@ public class WeiboHotCrawler implements HotCrawler {
         try {
             HttpRequest req = HttpRequest.newBuilder()
                     .uri(URI.create(VISITOR_URL))
+                    .timeout(Duration.ofSeconds(15))
                     .header("User-Agent", USER_AGENT)
                     .header("Content-Type", "application/x-www-form-urlencoded; charset=UTF-8")
                     .header("Origin", "https://passport.weibo.com")
@@ -147,7 +148,7 @@ public class WeiboHotCrawler implements HotCrawler {
                     subpCookie.isEmpty() ? "空" : "ok");
             return success;
         } catch (Exception e) {
-            log.error("[微博热榜] 获取 Visitor Cookie 异常: {}", e.getMessage());
+            log.error("[微博热榜] 获取 Visitor Cookie 异常: {}", e.getMessage(), e);
             return false;
         }
     }
@@ -186,6 +187,7 @@ public class WeiboHotCrawler implements HotCrawler {
             String cookie = "SUB=" + subCookie + "; SUBP=" + subpCookie;
             HttpRequest req = HttpRequest.newBuilder()
                     .uri(URI.create(HOT_URL))
+                    .timeout(Duration.ofSeconds(15))
                     .header("User-Agent", USER_AGENT)
                     .header("Cookie", cookie)
                     .header("Accept", "text/html,application/xhtml+xml")
@@ -201,7 +203,7 @@ public class WeiboHotCrawler implements HotCrawler {
 
             return resp.body();
         } catch (Exception e) {
-            log.error("[微博热榜] 请求页面异常: {}", e.getMessage());
+            log.error("[微博热榜] 请求页面异常: {}", e.getMessage(), e);
             return null;
         }
     }

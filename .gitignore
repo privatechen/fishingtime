@@ -18,6 +18,7 @@ Thumbs.db
 # Env
 *.log
 *.tmp
+/logs/
 
 # Node
 node_modules/

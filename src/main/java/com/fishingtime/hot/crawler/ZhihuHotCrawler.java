@@ -62,6 +62,7 @@ public class ZhihuHotCrawler implements HotCrawler {
         try {
             HttpRequest req = HttpRequest.newBuilder()
                     .uri(URI.create(API_URL))
+                    .timeout(Duration.ofSeconds(15))
                     .header("User-Agent", USER_AGENT)
                     .header("Referer", "https://www.zhihu.com/hot")
                     .header("Accept", "application/json")
@@ -81,7 +82,7 @@ public class ZhihuHotCrawler implements HotCrawler {
                     result.size(), System.currentTimeMillis() - start);
             return result.size() > 30 ? result.subList(0, 30) : result;
         } catch (Exception e) {
-            log.error("[知乎热榜] 请求异常: {}", e.getMessage());
+            log.error("[知乎热榜] 请求异常: {}", e.getMessage(), e);
             return List.of();
         }
     }

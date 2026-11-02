@@ -61,7 +61,7 @@ public class BaiduHotCrawler implements HotCrawler {
             log.warn("[百度热榜] 页面解析失败，未找到热榜数据");
             return List.of();
         } catch (Exception e) {
-            log.error("[百度热榜] 抓取异常: {}", e.getMessage());
+            log.error("[百度热榜] 抓取异常: {}", e.getMessage(), e);
             return List.of();
         }
     }
