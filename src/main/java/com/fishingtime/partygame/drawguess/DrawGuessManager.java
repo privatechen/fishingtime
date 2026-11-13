@@ -152,6 +152,19 @@ public class DrawGuessManager {
         }
     }
 
+    public DrawGuessPlayer playerForSession(WebSocketSession session) {
+        String roomId = attribute(session, ATTR_ROOM_ID);
+        String playerId = attribute(session, ATTR_PLAYER_ID);
+        if (roomId == null || playerId == null) return null;
+        DrawGuessRoom room = rooms.get(roomId);
+        if (room == null) return null;
+        synchronized (room) {
+            DrawGuessPlayer player = room.getPlayers().get(playerId);
+            return player != null && player.getSession() != null
+                    && player.getSession().getId().equals(session.getId()) ? player : null;
+        }
+    }
+
     public List<WebSocketSession> sessions(DrawGuessRoom room) {
         List<WebSocketSession> result = new ArrayList<>();
         synchronized (room) {
