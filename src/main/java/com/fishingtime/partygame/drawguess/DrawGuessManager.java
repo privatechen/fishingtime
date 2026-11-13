@@ -188,6 +188,9 @@ public class DrawGuessManager {
                 item.put("nickname", player.getNickname());
                 item.put("online", player.isOnline());
                 item.put("totalScore", player.getTotalScore());
+                item.put("currentRoundScore", player.getCurrentRoundScore());
+                item.put("guessedCorrectly", player.isGuessedCorrectly());
+                item.put("guessRank", player.getGuessRank());
                 return item;
             }).toList();
 
