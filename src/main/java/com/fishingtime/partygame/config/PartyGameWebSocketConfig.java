@@ -46,11 +46,10 @@ public class PartyGameWebSocketConfig implements WebSocketConfigurer {
                             org.springframework.web.socket.WebSocketHandler wsHandler,
                             Exception exception) {
                         if (exception != null) {
-                            log.warn("[PartyGame] WebSocket handshake failed: uri={}, status={}, reason={}",
-                                    request.getURI(), response.getStatusCode(), exception.toString());
+                            log.warn("[PartyGame] WebSocket handshake failed: uri={}, reason={}",
+                                    request.getURI(), exception.toString());
                         } else {
-                            log.info("[PartyGame] WebSocket handshake completed: uri={}, status={}",
-                                    request.getURI(), response.getStatusCode());
+                            log.info("[PartyGame] WebSocket handshake completed: uri={}", request.getURI());
                         }
                     }
                 })
