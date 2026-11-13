@@ -9,6 +9,7 @@ import org.springframework.core.Ordered;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.handler.AbstractUrlHandlerMapping;
 import org.springframework.web.servlet.HandlerMapping;
+import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping;
 
 import java.util.Map;
 
@@ -47,6 +48,19 @@ public class PartyGameHandlerMappingDiagnostics implements ApplicationRunner {
 
             log.info("[PartyGame-DIAG] HandlerMapping bean={}, type={}, order={}",
                     entry.getKey(), mapping.getClass().getName(), order);
+
+            if (mapping instanceof RequestMappingHandlerMapping) {
+                RequestMappingHandlerMapping requestMapping = (RequestMappingHandlerMapping) mapping;
+                requestMapping.getHandlerMethods().forEach((info, method) -> {
+                    String patterns = info.getPatternsCondition() == null
+                            ? String.valueOf(info)
+                            : info.getPatternsCondition().getPatterns().toString();
+                    if (patterns.contains("**") || patterns.contains("*") || patterns.contains("ws")) {
+                        log.info("[PartyGame-DIAG] MVC candidate bean={}, patterns={}, handler={}",
+                                entry.getKey(), patterns, method);
+                    }
+                });
+            }
 
             if (mapping instanceof AbstractUrlHandlerMapping) {
                 Map<String, Object> handlerMap =
