@@ -4,6 +4,8 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fishingtime.partygame.room.RoomManager;
 import com.fishingtime.partygame.room.RoomManager.Room;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.socket.CloseStatus;
 import org.springframework.web.socket.TextMessage;
@@ -15,6 +17,7 @@ import java.util.Map;
 
 @Component
 public class PartyGameWebSocketHandler extends TextWebSocketHandler {
+    private static final Logger log = LoggerFactory.getLogger(PartyGameWebSocketHandler.class);
     private final RoomManager rooms;
     private final ObjectMapper mapper;
 
@@ -62,6 +65,7 @@ public class PartyGameWebSocketHandler extends TextWebSocketHandler {
         } catch (IllegalArgumentException ex) {
             send(session, "ERROR", Map.of("message", ex.getMessage() == null ? "请求无效" : ex.getMessage()));
         } catch (Exception ex) {
+            log.error("[PartyGame] Message handling failed, sessionId={}", session.getId(), ex);
             send(session, "ERROR", Map.of("message", "服务器处理失败"));
         }
     }
