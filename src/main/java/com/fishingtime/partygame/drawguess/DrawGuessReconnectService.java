@@ -44,6 +44,10 @@ public class DrawGuessReconnectService {
         synchronized (room) {
             Map<String, Object> state = new LinkedHashMap<>(manager.snapshot(room));
             state.put("roundDeadline", room.getRoundDeadline());
+            state.put("artistId", room.getArtistId());
+            DrawGuessPlayer artist = room.getPlayers().get(room.getArtistId());
+            state.put("artistNickname", artist == null ? "画师" : artist.getNickname());
+            state.put("round", room.getCurrentRound());
             state.put("selectionDeadline", room.getSelectionDeadline());
             long remaining = room.getState() == DrawGuessState.DRAWING
                     ? room.getRoundDeadline() - now
@@ -54,6 +58,18 @@ public class DrawGuessReconnectService {
             state.put("currentRoundScore", player.getCurrentRoundScore());
             if (player.getId().equals(room.getArtistId()) && room.getCurrentAnswer() != null) {
                 state.put("answer", room.getCurrentAnswer());
+            }
+            if (room.getState() == DrawGuessState.SELECTING && player.getId().equals(room.getArtistId())) {
+                state.put("wordOptions", game.privateArtistOptions(roomId, playerId).get("options"));
+            }
+            if (room.getState() == DrawGuessState.ROUND_RESULT || room.getState() == DrawGuessState.GAME_OVER) {
+                state.put("answer", room.getCurrentAnswer());
+                state.put("scores", room.getPlayers().values().stream()
+                        .map(p -> new DrawGuessGameService.PlayerRoundScore(p.getId(), p.getNickname(),
+                                p.getGuessRank(), p.getCurrentRoundScore(), p.getTotalScore(),
+                                p.isGuessedCorrectly(), p.getGuessedAt()))
+                        .toList());
+                state.put("resultReason", "RECONNECTED");
             }
             return new ReconnectResult(room.getRoomId(), player.getId(), state,
                     drawing.snapshot(roomId), player.getReconnectToken());
