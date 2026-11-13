@@ -176,6 +176,7 @@ public class DrawGuessGameService {
         DrawGuessPlayer artist = candidates.get(RANDOM.nextInt(candidates.size()));
         room.setArtistId(artist.getId());
         room.getArtists().add(artist.getId());
+        room.resetDrawing();
         room.setCurrentWordId(null);
         room.setCurrentAnswer(null);
         room.setWordOptions(words.drawOptions(room.getUsedWordIds()));
