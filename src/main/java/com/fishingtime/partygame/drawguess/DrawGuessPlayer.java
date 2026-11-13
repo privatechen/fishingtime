@@ -18,6 +18,8 @@ public class DrawGuessPlayer {
     private boolean guessedCorrectly;
     private long guessedAt;
     private int guessRank;
+    private long drawingWindowStartedAt;
+    private int drawingPacketsInWindow;
 
     public DrawGuessPlayer(String id, String nickname, String reconnectToken, WebSocketSession session) {
         this.id = id;
@@ -42,6 +44,15 @@ public class DrawGuessPlayer {
     public void setGuessedCorrectly(boolean guessedCorrectly) { this.guessedCorrectly = guessedCorrectly; }
     public long getGuessedAt() { return guessedAt; }
     public void setGuessedAt(long guessedAt) { this.guessedAt = guessedAt; }
+    public boolean consumeDrawingPacket(long now) {
+        if (now - drawingWindowStartedAt >= 1000L || now < drawingWindowStartedAt) {
+            drawingWindowStartedAt = now;
+            drawingPacketsInWindow = 0;
+        }
+        if (drawingPacketsInWindow >= 20) return false;
+        drawingPacketsInWindow++;
+        return true;
+    }
     public int getGuessRank() { return guessRank; }
     public void setGuessRank(int guessRank) { this.guessRank = guessRank; }
 }
