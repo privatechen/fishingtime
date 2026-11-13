@@ -37,7 +37,7 @@ public class DrawGuessManager {
         requireUnboundSession(session);
         String roomId;
         do {
-            roomId = String.format("%06d", RANDOM.nextInt(1000000));
+            roomId = String.format("%04d", RANDOM.nextInt(10000));
         } while (rooms.containsKey(roomId));
 
         DrawGuessRoom room = new DrawGuessRoom(roomId);
