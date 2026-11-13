@@ -56,8 +56,17 @@ public class PartyGameWebSocketHandler extends TextWebSocketHandler {
                 }
                 case "LEAVE_ROOM" -> {
                     Room room = rooms.leave(session);
-                    if (room != null) broadcast(room, "PLAYER_LEFT", rooms.snapshot(room));
+                    // Acknowledge the leaver first. A failure while notifying the
+                    // remaining player must never prevent the leaver from exiting.
                     send(session, "LEFT_ROOM", Map.of());
+                    if (room != null) {
+                        try {
+                            broadcast(room, "PLAYER_LEFT", rooms.snapshot(room));
+                        } catch (Exception notifyError) {
+                            log.warn("[PartyGame] Failed to notify remaining players after leave, roomId={}",
+                                    room.code, notifyError);
+                        }
+                    }
                 }
                 case "PING" -> send(session, "PONG", Map.of());
                 default -> send(session, "ERROR", Map.of("message", "未知消息类型"));
