@@ -12,6 +12,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public class RoomManager {
     public static final int SIZE = 15;
     private static final long ROOM_TTL_MILLIS = 30 * 60 * 1000L;
+    private static final long REMATCH_TTL_MILLIS = 30 * 1000L;
     private static final SecureRandom RANDOM = new SecureRandom();
     private final Map<String, Room> rooms = new ConcurrentHashMap<>();
 
@@ -77,22 +78,84 @@ public class RoomManager {
         }
     }
 
-    public synchronized Room restart(WebSocketSession session) {
-        String code = (String) session.getAttributes().get("roomId");
-        Room room = get(code);
-        if (room.players.size() != 2) throw new IllegalArgumentException("等待另一位玩家加入");
+    public synchronized RematchResult requestRematch(WebSocketSession session) {
+        Room room = getSessionRoom(session);
         synchronized (room) {
-            room.board = new int[SIZE][SIZE];
-            room.currentPlayer = 1;
-            room.moves = 0;
-            room.lastX = -1;
-            room.lastY = -1;
-            room.lastColor = 0;
-            room.winner = 0;
-            room.draw = false;
-            room.updatedAt = System.currentTimeMillis();
-            return room;
+            requireFinishedTwoPlayerGame(room);
+            String playerId = (String) session.getAttributes().get("playerId");
+            long now = System.currentTimeMillis();
+            if (room.rematchInviterId != null && now - room.rematchRequestedAt > REMATCH_TTL_MILLIS) {
+                room.rematchInviterId = null;
+                room.rematchRequestedAt = 0;
+            }
+            if (room.rematchInviterId != null && !room.rematchInviterId.equals(playerId)) {
+                restartBoard(room);
+                room.rematchInviterId = null;
+                room.rematchRequestedAt = 0;
+                return new RematchResult(room, "RESTARTED");
+            }
+            if (playerId.equals(room.rematchInviterId)) {
+                throw new IllegalArgumentException("再战邀请已发送，请等待对方回应");
+            }
+            room.rematchInviterId = playerId;
+            room.rematchRequestedAt = now;
+            return new RematchResult(room, "REQUESTED");
         }
+    }
+
+    public synchronized RematchResult respondRematch(WebSocketSession session, boolean accept) {
+        Room room = getSessionRoom(session);
+        synchronized (room) {
+            requireFinishedTwoPlayerGame(room);
+            String playerId = (String) session.getAttributes().get("playerId");
+            long now = System.currentTimeMillis();
+            if (room.rematchInviterId == null || now - room.rematchRequestedAt > REMATCH_TTL_MILLIS) {
+                room.rematchInviterId = null;
+                room.rematchRequestedAt = 0;
+                throw new IllegalArgumentException("再战邀请已失效");
+            }
+            if (room.rematchInviterId.equals(playerId)) throw new IllegalArgumentException("不能回应自己的邀请");
+            if (accept) restartBoard(room);
+            room.rematchInviterId = null;
+            room.rematchRequestedAt = 0;
+            return new RematchResult(room, accept ? "ACCEPTED" : "REJECTED");
+        }
+    }
+
+    public synchronized RematchResult cancelRematch(WebSocketSession session) {
+        Room room = getSessionRoom(session);
+        synchronized (room) {
+            String playerId = (String) session.getAttributes().get("playerId");
+            if (!playerId.equals(room.rematchInviterId)) throw new IllegalArgumentException("没有可取消的再战邀请");
+            room.rematchInviterId = null;
+            room.rematchRequestedAt = 0;
+            return new RematchResult(room, "CANCELLED");
+        }
+    }
+
+    private Room getSessionRoom(WebSocketSession session) {
+        String code = (String) session.getAttributes().get("roomId");
+        String playerId = (String) session.getAttributes().get("playerId");
+        Room room = get(code);
+        if (playerId == null || !room.players.containsKey(playerId)) throw new IllegalArgumentException("你不在这个房间中");
+        return room;
+    }
+
+    private void requireFinishedTwoPlayerGame(Room room) {
+        if (room.players.size() != 2 || !room.started) throw new IllegalArgumentException("等待另一位玩家加入");
+        if (room.winner == 0 && !room.draw) throw new IllegalArgumentException("本局尚未结束");
+    }
+
+    private void restartBoard(Room room) {
+        room.board = new int[SIZE][SIZE];
+        room.currentPlayer = 1;
+        room.moves = 0;
+        room.lastX = -1;
+        room.lastY = -1;
+        room.lastColor = 0;
+        room.winner = 0;
+        room.draw = false;
+        room.updatedAt = System.currentTimeMillis();
     }
 
     public synchronized Room leave(WebSocketSession session) {
@@ -104,6 +167,8 @@ public class RoomManager {
         room.players.remove(playerId);
         room.updatedAt = System.currentTimeMillis();
         if (room.players.isEmpty()) rooms.remove(code);
+        room.rematchInviterId = null;
+        room.rematchRequestedAt = 0;
         session.getAttributes().remove("roomId");
         session.getAttributes().remove("playerId");
         return room;
@@ -180,6 +245,8 @@ public class RoomManager {
         public boolean draw;
         public boolean started;
         public long updatedAt;
+        public String rematchInviterId;
+        public long rematchRequestedAt;
         Room(String code) { this.code = code; }
     }
 
@@ -193,4 +260,5 @@ public class RoomManager {
     }
 
     public record MoveResult(Room room, String playerId) {}
+    public record RematchResult(Room room, String status) {}
 }
