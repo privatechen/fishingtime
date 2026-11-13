@@ -12,6 +12,7 @@ public class DrawGuessRoom {
     private final Map<String, DrawGuessPlayer> players = new LinkedHashMap<>();
     private final Set<String> artists = new LinkedHashSet<>();
     private final Set<Integer> usedWordIds = new LinkedHashSet<>();
+    private final List<DrawStroke> strokes = new ArrayList<>();
     private List<DrawGuessWordRepository.Word> wordOptions = new ArrayList<>();
     private String hostPlayerId;
     private DrawGuessState state = DrawGuessState.WAITING;
@@ -24,6 +25,8 @@ public class DrawGuessRoom {
     private long roundStartedAt;
     private long roundDeadline;
     private long updatedAt;
+    private long nextStrokeId = 1;
+    private int totalDrawingPoints;
 
     public DrawGuessRoom(String roomId) { this.roomId = roomId; this.updatedAt = System.currentTimeMillis(); }
     public String getRoomId() { return roomId; }
@@ -53,4 +56,10 @@ public class DrawGuessRoom {
     public void setRoundDeadline(long value) { roundDeadline = value; }
     public long getUpdatedAt() { return updatedAt; }
     public void touch() { updatedAt = System.currentTimeMillis(); }
+
+    public List<DrawStroke> getStrokes() { return strokes; }
+    public long nextStrokeId() { return nextStrokeId++; }
+    public int getTotalDrawingPoints() { return totalDrawingPoints; }
+    public void addDrawingPoints(int count) { totalDrawingPoints += count; }
+    public void resetDrawing() { strokes.clear(); totalDrawingPoints = 0; nextStrokeId = 1; }
 }
