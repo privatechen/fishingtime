@@ -77,3 +77,9 @@ management:
   endpoint:
     health:
       show-details: always
+# Temporary diagnostics for PartyGame WebSocket registration and request mapping
+logging:
+  level:
+    org.springframework.web.socket.server.support.WebSocketHandlerMapping: TRACE
+    org.springframework.web.socket.server.support.WebSocketHttpRequestHandler: DEBUG
+    org.springframework.web.servlet.handler.AbstractHandlerMapping: TRACE
