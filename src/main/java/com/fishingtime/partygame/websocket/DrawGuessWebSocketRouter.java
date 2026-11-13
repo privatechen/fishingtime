@@ -96,9 +96,27 @@ public class DrawGuessWebSocketRouter {
                     }
                 }
                 case "DG_LEAVE_ROOM" -> {
+                    String rid=roomId(session);
+                    String pid=playerId(session);
+                    DrawGuessRoom current=manager.get(rid);
+                    boolean artist=pid.equals(current.getArtistId());
+                    DrawGuessState state=current.getState();
+                    if(artist && state==DrawGuessState.DRAWING) {
+                        broadcast(current,"DG_ROUND_RESULT",
+                                game.endRound(rid,"ARTIST_DISCONNECTED",System.currentTimeMillis()));
+                    } else if(artist && state==DrawGuessState.SELECTING) {
+                        synchronized(current) {
+                            current.setState(current.getCurrentRound()>=current.getTotalRounds()
+                                    ? DrawGuessState.GAME_OVER : DrawGuessState.ROUND_RESULT);
+                            current.setSelectionDeadline(0);
+                            current.touch();
+                        }
+                        broadcast(current,"DG_ROUND_ABORTED",manager.snapshot(current));
+                    }
                     DrawGuessRoom room=manager.leave(session);
                     send(session,"DG_LEFT_ROOM",Map.of());
-                    if(room!=null) broadcast(room,"DG_ROOM_UPDATED",manager.snapshot(room));
+                    if(room!=null && !manager.sessions(room).isEmpty())
+                        broadcast(room,"DG_ROOM_UPDATED",manager.snapshot(room));
                 }
                 default -> throw new IllegalArgumentException("未知的你画我猜消息类型");
             }
