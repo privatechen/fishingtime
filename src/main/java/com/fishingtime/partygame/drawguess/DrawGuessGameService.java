@@ -98,7 +98,7 @@ public class DrawGuessGameService {
             room.touch();
 
             boolean allGuessed = room.getPlayers().values().stream()
-                    .filter(p -> !p.getId().equals(room.getArtistId()))
+                    .filter(p -> !p.getId().equals(room.getArtistId()) && p.isOnline())
                     .allMatch(DrawGuessPlayer::isGuessedCorrectly);
             return new GuessResult(true, playerId, rank, points,
                     Math.max(0, now - room.getRoundStartedAt()), allGuessed);
@@ -116,7 +116,7 @@ public class DrawGuessGameService {
             }
             if ("ALL_GUESSED".equals(reason)) {
                 boolean allGuessed = room.getPlayers().values().stream()
-                        .filter(p -> !p.getId().equals(room.getArtistId()))
+                        .filter(p -> !p.getId().equals(room.getArtistId()) && p.isOnline())
                         .allMatch(DrawGuessPlayer::isGuessedCorrectly);
                 if (!allGuessed) throw new IllegalArgumentException("仍有在线玩家尚未猜中");
             }
