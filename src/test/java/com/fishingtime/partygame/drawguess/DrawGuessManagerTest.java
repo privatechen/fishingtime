@@ -23,13 +23,12 @@ class DrawGuessManagerTest {
         WebSocketSession host = session("host");
         DrawGuessRoom room = manager.create(host, "小明");
 
-        assertEquals(4, room.getRoomId().length());
+        assertEquals(6, room.getRoomId().length());
         assertEquals(1, room.getPlayers().size());
         assertEquals(DrawGuessState.WAITING, room.getState());
         assertEquals(room.getRoomId(), host.getAttributes().get("drawGuessRoomId"));
         assertEquals(room.getHostPlayerId(), host.getAttributes().get("drawGuessPlayerId"));
-        assertEquals("小明", manager.snapshot(room).get("gameType") == null ? "" :
-                room.getPlayers().get(room.getHostPlayerId()).getNickname());
+        assertEquals("小明", room.getPlayers().get(room.getHostPlayerId()).getNickname());
     }
 
     @Test
