@@ -21,21 +21,31 @@ public class PartyGameWebSocketHandler extends TextWebSocketHandler {
     private static final Logger log = LoggerFactory.getLogger(PartyGameWebSocketHandler.class);
     private final RoomManager rooms;
     private final ObjectMapper mapper;
+    private final DrawGuessWebSocketRouter drawGuess;
 
-    public PartyGameWebSocketHandler(RoomManager rooms, ObjectMapper mapper) {
+    public PartyGameWebSocketHandler(RoomManager rooms, ObjectMapper mapper, DrawGuessWebSocketRouter drawGuess) {
         this.rooms = rooms;
         this.mapper = mapper;
+        this.drawGuess = drawGuess;
     }
 
     @Override
     protected void handleTextMessage(WebSocketSession session, TextMessage message) throws Exception {
-        if (message.getPayloadLength() > 2048) {
+        if (message.getPayloadLength() > 16384) {
             send(session, "ERROR", Map.of("message", "消息过大"));
             return;
         }
         try {
             JsonNode body = mapper.readTree(message.getPayload());
             String type = requiredText(body, "type");
+            if (!type.startsWith("DG_") && message.getPayloadLength() > 2048) {
+                send(session, "ERROR", Map.of("message", "消息过大"));
+                return;
+            }
+            if (drawGuess.supports(type)) {
+                drawGuess.handle(session, body, type);
+                return;
+            }
             switch (type) {
                 case "CREATE_ROOM" -> {
                     Room room = rooms.create(session, optionalText(body, "nickname"));
@@ -110,6 +120,10 @@ public class PartyGameWebSocketHandler extends TextWebSocketHandler {
 
     @Override
     public void afterConnectionClosed(WebSocketSession session, CloseStatus status) {
+        if (session.getAttributes().containsKey("drawGuessRoomId")) {
+            drawGuess.disconnected(session);
+            return;
+        }
         rooms.markDisconnected(session);
         Room room = rooms.leave(session);
         if (room != null) {
