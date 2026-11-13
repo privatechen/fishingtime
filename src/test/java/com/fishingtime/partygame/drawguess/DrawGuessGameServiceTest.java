@@ -51,7 +51,7 @@ class DrawGuessGameServiceTest {
         var selected = game.processSelectionTimeout(room.getRoomId(), 25_000L);
         assertNotNull(selected);
         assertTrue(selected.autoSelected());
-        assertEquals(50_000L, selected.roundDeadline());
+        assertEquals(65_000L, selected.roundDeadline());
         assertNull(game.processSelectionTimeout(room.getRoomId(), 30_000L));
     }
 
