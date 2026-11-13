@@ -30,6 +30,7 @@ public class DrawGuessDrawingService {
         DrawGuessRoom room = manager.get(roomId);
         synchronized (room) {
             requireArtistDrawing(room, playerId, now);
+            consumePacket(room, playerId, now);
             if (room.getStrokes().size() >= MAX_STROKES_PER_ROUND) throw new IllegalArgumentException("本轮笔画数量已达到上限");
             if (color == null || !COLOR_PATTERN.matcher(color).matches()) throw new IllegalArgumentException("画笔颜色格式无效");
             if (!Float.isFinite(width) || width < MIN_BRUSH_WIDTH || width > MAX_BRUSH_WIDTH) {
@@ -47,6 +48,7 @@ public class DrawGuessDrawingService {
         DrawGuessRoom room = manager.get(roomId);
         synchronized (room) {
             requireArtistDrawing(room, playerId, now);
+            consumePacket(room, playerId, now);
             if (points == null || points.isEmpty() || points.size() > MAX_POINTS_PER_PACKET) {
                 throw new IllegalArgumentException("单次绘画点数必须为 1 到 " + MAX_POINTS_PER_PACKET);
             }
@@ -67,6 +69,7 @@ public class DrawGuessDrawingService {
         DrawGuessRoom room = manager.get(roomId);
         synchronized (room) {
             requireArtistDrawing(room, playerId, now);
+            consumePacket(room, playerId, now);
             DrawStroke stroke = findActiveStroke(room, strokeId);
             stroke.setEnded(true);
             room.touch();
@@ -78,6 +81,7 @@ public class DrawGuessDrawingService {
         DrawGuessRoom room = manager.get(roomId);
         synchronized (room) {
             requireArtistDrawing(room, playerId, now);
+            consumePacket(room, playerId, now);
             if (room.getStrokes().isEmpty()) return new UndoResult(false, null);
             DrawStroke removed = room.getStrokes().remove(room.getStrokes().size() - 1);
             room.addDrawingPoints(-removed.getPoints().size());
@@ -90,6 +94,7 @@ public class DrawGuessDrawingService {
         DrawGuessRoom room = manager.get(roomId);
         synchronized (room) {
             requireArtistDrawing(room, playerId, now);
+            consumePacket(room, playerId, now);
             int removed = room.getStrokes().size();
             room.resetDrawing();
             room.touch();
@@ -115,6 +120,13 @@ public class DrawGuessDrawingService {
         if (playerId == null || !playerId.equals(room.getArtistId())) throw new IllegalArgumentException("只有当前画师可以操作画板");
         DrawGuessPlayer artist = room.getPlayers().get(playerId);
         if (artist == null || !artist.isOnline()) throw new IllegalArgumentException("画师当前连接不可用");
+    }
+
+    private void consumePacket(DrawGuessRoom room, String playerId, long now) {
+        DrawGuessPlayer player = room.getPlayers().get(playerId);
+        if (player == null || !player.consumeDrawingPacket(now)) {
+            throw new IllegalArgumentException("绘画操作过于频繁，请稍后重试");
+        }
     }
 
     private DrawStroke findActiveStroke(DrawGuessRoom room, long strokeId) {
