@@ -69,6 +69,34 @@ class DrawGuessGameServiceTest {
     }
 
     @Test
+    void exactGuessAwardsRankPointsAndArtistBonus() {
+        var setup = game.startGame(room.getRoomId(), hostId, 1_000L);
+        var selected = game.selectWord(room.getRoomId(), setup.artistId(),
+                Integer.parseInt(setup.optionIds().get(0)), 2_000L);
+        String guesser = setup.artistId().equals(hostId) ? guestId : hostId;
+        assertFalse(game.submitGuess(room.getRoomId(), guesser, selected.answer() + " ", 3_000L).correct());
+        var correct = game.submitGuess(room.getRoomId(), guesser, selected.answer(), 4_000L);
+        assertTrue(correct.correct());
+        assertEquals(1, correct.rank());
+        assertEquals(10, correct.points());
+        assertTrue(correct.allGuessed());
+        assertThrows(IllegalArgumentException.class,
+                () -> game.submitGuess(room.getRoomId(), guesser, selected.answer(), 5_000L));
+        var result = game.endRound(room.getRoomId(), "ALL_GUESSED", 5_000L);
+        assertEquals(5, result.artistPoints());
+        assertEquals(10, result.scores().stream().filter(s -> s.playerId().equals(guesser)).findFirst().orElseThrow().roundPoints());
+    }
+
+    @Test
+    void artistDisconnectDoesNotReceiveBonus() {
+        var setup = game.startGame(room.getRoomId(), hostId, 1_000L);
+        game.selectWord(room.getRoomId(), setup.artistId(),
+                Integer.parseInt(setup.optionIds().get(0)), 2_000L);
+        var result = game.endRound(room.getRoomId(), "ARTIST_DISCONNECTED", 3_000L);
+        assertEquals(0, result.artistPoints());
+    }
+
+    @Test
     void secondRoundEndMovesDirectlyToGameOver() {
         var first = game.startGame(room.getRoomId(), hostId, 1_000L);
         game.selectWord(room.getRoomId(), first.artistId(), Integer.parseInt(first.optionIds().get(0)), 2_000L);
