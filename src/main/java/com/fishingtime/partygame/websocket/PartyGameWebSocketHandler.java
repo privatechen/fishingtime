@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fishingtime.partygame.room.RoomManager;
 import com.fishingtime.partygame.room.RoomManager.Room;
+import com.fishingtime.partygame.room.RoomManager.RematchResult;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -50,9 +51,37 @@ public class PartyGameWebSocketHandler extends TextWebSocketHandler {
                     RoomManager.MoveResult result = rooms.move(session, x, y);
                     broadcast(result.room(), "MOVE_UPDATED", rooms.snapshot(result.room()));
                 }
-                case "RESTART" -> {
-                    Room room = rooms.restart(session);
-                    broadcast(room, "GAME_RESTARTED", rooms.snapshot(room));
+                case "REMATCH_REQUEST" -> {
+                    RematchResult result = rooms.requestRematch(session);
+                    if ("RESTARTED".equals(result.status())) {
+                        broadcast(result.room(), "GAME_RESTARTED", rooms.snapshot(result.room()));
+                    } else {
+                        WebSocketSession opponent = rooms.sessions(result.room()).stream()
+                                .filter(target -> !target.getId().equals(session.getId()))
+                                .findFirst().orElse(null);
+                        if (opponent != null) send(opponent, "REMATCH_INVITE", Map.of());
+                        send(session, "REMATCH_PENDING", Map.of("expiresIn", 30));
+                    }
+                }
+                case "REMATCH_ACCEPT" -> {
+                    RematchResult result = rooms.respondRematch(session, true);
+                    broadcast(result.room(), "GAME_RESTARTED", rooms.snapshot(result.room()));
+                }
+                case "REMATCH_REJECT" -> {
+                    RematchResult result = rooms.respondRematch(session, false);
+                    WebSocketSession inviter = rooms.sessions(result.room()).stream()
+                            .filter(target -> !target.getId().equals(session.getId()))
+                            .findFirst().orElse(null);
+                    if (inviter != null) send(inviter, "REMATCH_REJECTED", Map.of());
+                    send(session, "REMATCH_DECLINED", Map.of());
+                }
+                case "REMATCH_CANCEL" -> {
+                    RematchResult result = rooms.cancelRematch(session);
+                    WebSocketSession opponent = rooms.sessions(result.room()).stream()
+                            .filter(target -> !target.getId().equals(session.getId()))
+                            .findFirst().orElse(null);
+                    if (opponent != null) send(opponent, "REMATCH_CANCELLED", Map.of());
+                    send(session, "REMATCH_CANCELLED", Map.of());
                 }
                 case "LEAVE_ROOM" -> {
                     Room room = rooms.leave(session);
