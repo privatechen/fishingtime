@@ -197,6 +197,7 @@ public class DrawGuessManager {
             result.put("hostPlayerId", room.getHostPlayerId());
             result.put("state", room.getState().name());
             result.put("currentRound", room.getCurrentRound());
+            result.put("artistId", room.getArtistId());
             result.put("totalRounds", room.getTotalRounds());
             result.put("players", players);
             result.put("maxPlayers", MAX_PLAYERS);
