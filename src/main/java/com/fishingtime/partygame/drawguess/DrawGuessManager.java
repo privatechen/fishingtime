@@ -79,6 +79,52 @@ public class DrawGuessManager {
         return room;
     }
 
+    public synchronized DisconnectInfo disconnect(WebSocketSession session) {
+        String roomId = attribute(session, ATTR_ROOM_ID);
+        String playerId = attribute(session, ATTR_PLAYER_ID);
+        if (roomId == null || playerId == null) return null;
+        DrawGuessRoom room = rooms.get(roomId);
+        clearSessionBinding(session);
+        if (room == null) return null;
+        synchronized (room) {
+            DrawGuessPlayer player = room.getPlayers().get(playerId);
+            if (player == null || player.getSession() == null
+                    || !player.getSession().getId().equals(session.getId())) return null;
+            player.setOnline(false);
+            player.setSession(null);
+            if (playerId.equals(room.getHostPlayerId())) {
+                room.setHostPlayerId(room.getPlayers().values().stream()
+                        .filter(DrawGuessPlayer::isOnline).map(DrawGuessPlayer::getId)
+                        .findFirst().orElse(playerId));
+            }
+            room.touch();
+            return new DisconnectInfo(room, playerId, playerId.equals(room.getArtistId()), room.getState());
+        }
+    }
+
+    public synchronized DrawGuessPlayer reconnect(WebSocketSession session, String roomId,
+                                                   String playerId, String reconnectToken) {
+        requireUnboundSession(session);
+        DrawGuessRoom room = get(roomId);
+        synchronized (room) {
+            DrawGuessPlayer player = room.getPlayers().get(playerId);
+            if (player == null || reconnectToken == null
+                    || !java.security.MessageDigest.isEqual(
+                    player.getReconnectToken().getBytes(java.nio.charset.StandardCharsets.UTF_8),
+                    reconnectToken.getBytes(java.nio.charset.StandardCharsets.UTF_8))) {
+                throw new IllegalArgumentException("重连凭证无效");
+            }
+            if (player.isOnline()) throw new IllegalArgumentException("该玩家已有有效连接");
+            player.setSession(session);
+            player.setOnline(true);
+            bindSession(session, roomId, playerId);
+            room.touch();
+            return player;
+        }
+    }
+
+    public record DisconnectInfo(DrawGuessRoom room, String playerId, boolean artist, DrawGuessState state) {}
+
     public synchronized DrawGuessRoom leave(WebSocketSession session) {
         String roomId = attribute(session, ATTR_ROOM_ID);
         String playerId = attribute(session, ATTR_PLAYER_ID);

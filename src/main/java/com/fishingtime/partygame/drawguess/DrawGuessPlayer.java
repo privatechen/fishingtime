@@ -4,8 +4,7 @@ import org.springframework.web.socket.WebSocketSession;
 
 /**
  * A player participating in one Draw & Guess room.
- * Reconnection behavior is implemented in a later phase; the token is
- * generated now so the identity model does not need to change later.
+ * Reconnection uses a room-scoped token and preserves player identity.
  */
 public class DrawGuessPlayer {
     private final String id;
