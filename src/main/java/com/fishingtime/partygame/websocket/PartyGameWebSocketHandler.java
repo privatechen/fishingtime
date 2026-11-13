@@ -4,8 +4,6 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fishingtime.partygame.room.RoomManager;
 import com.fishingtime.partygame.room.RoomManager.Room;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.socket.CloseStatus;
 import org.springframework.web.socket.TextMessage;
@@ -17,18 +15,12 @@ import java.util.Map;
 
 @Component
 public class PartyGameWebSocketHandler extends TextWebSocketHandler {
-    private static final Logger log = LoggerFactory.getLogger(PartyGameWebSocketHandler.class);
     private final RoomManager rooms;
     private final ObjectMapper mapper;
 
     public PartyGameWebSocketHandler(RoomManager rooms, ObjectMapper mapper) {
         this.rooms = rooms;
         this.mapper = mapper;
-    }
-
-    @Override
-    public void afterConnectionEstablished(WebSocketSession session) {
-        log.info("[PartyGame] WebSocket connected: sessionId={}, uri={}", session.getId(), session.getUri());
     }
 
     @Override
@@ -40,7 +32,6 @@ public class PartyGameWebSocketHandler extends TextWebSocketHandler {
         try {
             JsonNode body = mapper.readTree(message.getPayload());
             String type = requiredText(body, "type");
-            log.debug("[PartyGame] WebSocket message: sessionId={}, type={}", session.getId(), type);
             switch (type) {
                 case "CREATE_ROOM" -> {
                     Room room = rooms.create(session, optionalText(body, "nickname"));
@@ -69,17 +60,14 @@ public class PartyGameWebSocketHandler extends TextWebSocketHandler {
                 default -> send(session, "ERROR", Map.of("message", "未知消息类型"));
             }
         } catch (IllegalArgumentException ex) {
-            log.warn("[PartyGame] Invalid WebSocket request: sessionId={}, reason={}", session.getId(), ex.getMessage());
             send(session, "ERROR", Map.of("message", ex.getMessage() == null ? "请求无效" : ex.getMessage()));
         } catch (Exception ex) {
-            log.error("[PartyGame] WebSocket message handling failed: sessionId={}", session.getId(), ex);
             send(session, "ERROR", Map.of("message", "服务器处理失败"));
         }
     }
 
     @Override
     public void afterConnectionClosed(WebSocketSession session, CloseStatus status) {
-        log.info("[PartyGame] WebSocket disconnected: sessionId={}, code={}, reason={}", session.getId(), status.getCode(), status.getReason());
         rooms.markDisconnected(session);
         Room room = rooms.leave(session);
         if (room != null) {
