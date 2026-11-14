@@ -22,11 +22,13 @@ public class PartyGameWebSocketHandler extends TextWebSocketHandler {
     private final RoomManager rooms;
     private final ObjectMapper mapper;
     private final DrawGuessWebSocketRouter drawGuess;
+    private final EitherOrWebSocketRouter eitherOr;
 
-    public PartyGameWebSocketHandler(RoomManager rooms, ObjectMapper mapper, DrawGuessWebSocketRouter drawGuess) {
+    public PartyGameWebSocketHandler(RoomManager rooms, ObjectMapper mapper, DrawGuessWebSocketRouter drawGuess, EitherOrWebSocketRouter eitherOr) {
         this.rooms = rooms;
         this.mapper = mapper;
         this.drawGuess = drawGuess;
+        this.eitherOr = eitherOr;
     }
 
     @Override
@@ -40,6 +42,10 @@ public class PartyGameWebSocketHandler extends TextWebSocketHandler {
             String type = requiredText(body, "type");
             if (!type.startsWith("DG_") && message.getPayloadLength() > 2048) {
                 send(session, "ERROR", Map.of("message", "消息过大"));
+                return;
+            }
+            if (eitherOr.supports(type)) {
+                eitherOr.handle(session, body, type);
                 return;
             }
             if (drawGuess.supports(type)) {
@@ -120,6 +126,10 @@ public class PartyGameWebSocketHandler extends TextWebSocketHandler {
 
     @Override
     public void afterConnectionClosed(WebSocketSession session, CloseStatus status) {
+        if (session.getAttributes().containsKey("eitherOrRoomId")) {
+            eitherOr.disconnected(session);
+            return;
+        }
         if (session.getAttributes().containsKey("drawGuessRoomId")) {
             drawGuess.disconnected(session);
             return;
