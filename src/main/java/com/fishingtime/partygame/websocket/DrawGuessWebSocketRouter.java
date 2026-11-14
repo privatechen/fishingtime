@@ -55,6 +55,60 @@ public class DrawGuessWebSocketRouter {
                     broadcast(room,"DG_ROUND_SELECTING",Map.of("round",setup.round(),"artistId",setup.artistId(),"artistNickname",setup.artistNickname(),"selectionDeadline",setup.selectionDeadline()));
                     sendArtistOptions(room);
                 }
+                case "DG_REMATCH_REQUEST" -> {
+                    String rid=roomId(session), pid=playerId(session);
+                    DrawGuessRoom room=manager.get(rid);
+                    synchronized(room) {
+                        if(!pid.equals(room.getHostPlayerId())) throw new IllegalArgumentException("只有房主可以发起再来一局");
+                        if(room.getState()!=DrawGuessState.GAME_OVER) throw new IllegalArgumentException("当前不能发起再来一局");
+                        long online=room.getPlayers().values().stream().filter(DrawGuessPlayer::isOnline).count();
+                        if(online<DrawGuessManager.MIN_PLAYERS) throw new IllegalArgumentException("至少需要两名在线玩家");
+                        room.clearRematch();
+                        room.getRematchVotes().put(pid,true);
+                        room.setRematchDeadline(System.currentTimeMillis()+30_000L);
+                        room.touch();
+                    }
+                    DrawGuessPlayer inviter=room.getPlayers().get(pid);
+                    Map<String,Object> invite=Map.of("hostPlayerId",pid,"hostNickname",inviter.getNickname(),
+                            "deadline",room.getRematchDeadline(),"roomId",rid);
+                    for(WebSocketSession peer:manager.sessions(room))
+                        if(!playerId(peer).equals(pid)) send(peer,"DG_REMATCH_INVITE",invite);
+                    send(session,"DG_REMATCH_PENDING",Map.of("deadline",room.getRematchDeadline()));
+                }
+                case "DG_REMATCH_VOTE" -> {
+                    String rid=roomId(session), pid=playerId(session);
+                    DrawGuessRoom room=manager.get(rid);
+                    boolean accept=body.path("accept").asBoolean(false);
+                    boolean start=false;
+                    synchronized(room) {
+                        if(room.getState()!=DrawGuessState.GAME_OVER || room.getRematchDeadline()==0
+                                || System.currentTimeMillis()>=room.getRematchDeadline())
+                            throw new IllegalArgumentException("再来一局邀请已失效");
+                        if(pid.equals(room.getHostPlayerId())) throw new IllegalArgumentException("房主无需确认");
+                        if(!room.getRematchVotes().containsKey(room.getHostPlayerId()))
+                            throw new IllegalArgumentException("邀请状态无效");
+                        if(!accept) {
+                            room.clearRematch();
+                            room.touch();
+                        } else {
+                            room.getRematchVotes().put(pid,true);
+                            boolean allAccepted=room.getPlayers().values().stream().filter(DrawGuessPlayer::isOnline)
+                                    .allMatch(p->Boolean.TRUE.equals(room.getRematchVotes().get(p.getId())));
+                            start=allAccepted;
+                            room.touch();
+                        }
+                    }
+                    if(!accept) {
+                        broadcast(room,"DG_REMATCH_CANCELLED",Map.of("reason","DECLINED","playerId",pid));
+                    } else if(start) {
+                        var setup=game.startRematch(rid,System.currentTimeMillis());
+                        broadcast(room,"DG_REMATCH_STARTED",Map.of("round",setup.round(),"artistId",setup.artistId(),
+                                "artistNickname",setup.artistNickname(),"selectionDeadline",setup.selectionDeadline()));
+                        sendArtistOptions(room);
+                    } else {
+                        broadcast(room,"DG_REMATCH_VOTE_UPDATED",Map.of("playerId",pid,"accepted",true));
+                    }
+                }
                 case "DG_SELECT_WORD" -> {
                     String rid=roomId(session);
                     var selected=game.selectWord(rid,playerId(session),body.path("wordId").asInt(-1),System.currentTimeMillis());
@@ -145,7 +199,11 @@ public class DrawGuessWebSocketRouter {
         for(DrawGuessRoom room:manager.allRooms()) {
             try {
                 synchronized(room) {
-                    if(room.getState()==DrawGuessState.SELECTING && now>=room.getSelectionDeadline()) {
+                    if(room.getRematchDeadline()>0 && now>=room.getRematchDeadline()) {
+                        room.clearRematch();
+                        room.touch();
+                        broadcast(room,"DG_REMATCH_CANCELLED",Map.of("reason","TIMEOUT"));
+                    } else if(room.getState()==DrawGuessState.SELECTING && now>=room.getSelectionDeadline()) {
                         var v=game.processSelectionTimeout(room.getRoomId(),now);
                         if(v!=null) {
                             broadcast(room,"DG_DRAWING_STARTED",Map.of("round",v.round(),"artistId",room.getArtistId(),"roundDeadline",v.roundDeadline()));
