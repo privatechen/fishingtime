@@ -96,7 +96,7 @@ public class EitherOrGameService {
     private RoundResult finishRound(EitherOrManager.Room room) {
         int votesA = (int) room.players.values().stream().filter(p -> "A".equals(p.choice)).count();
         int votesB = (int) room.players.values().stream().filter(p -> "B".equals(p.choice)).count();
-        String minority = votesA == votesB ? "TIE" : (votesA < votesB ? "A" : "B");
+        String minority = votesA + votesB < 2 || votesA == votesB ? "TIE" : (votesA < votesB ? "A" : "B");
         Map<String,Integer> roundPoints = new HashMap<>();
         if (!"TIE".equals(minority) && votesA + votesB >= 2) {
             for (EitherOrManager.Player player : room.players.values()) {
