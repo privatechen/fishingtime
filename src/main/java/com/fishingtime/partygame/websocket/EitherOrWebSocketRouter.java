@@ -50,8 +50,14 @@ public class EitherOrWebSocketRouter {
                     EitherOrManager.Player player = manager.reconnect(session, required(body, "roomId"),
                             required(body, "playerId"), required(body, "reconnectToken"));
                     Room room = manager.roomFor(session);
-                    send(session, "EO_RECONNECTED", Map.of("room", manager.snapshot(room),
-                            "playerId", player.id, "reconnectToken", player.reconnectToken));
+                    Map<String,Object> restored = new LinkedHashMap<>();
+                    restored.put("room", manager.snapshot(room));
+                    restored.put("playerId", player.id);
+                    restored.put("reconnectToken", player.reconnectToken);
+                    restored.put("myChoice", player.choice);
+                    restored.put("result", room.lastResult);
+                    restored.put("scores", gameScores(room));
+                    send(session, "EO_RECONNECTED", restored);
                     broadcastExcept(room, session, "EO_ROOM_UPDATED", manager.snapshot(room));
                 }
                 case "EO_START_GAME" -> {
