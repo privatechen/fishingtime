@@ -64,6 +64,19 @@ public class EitherOrManager {
         return room;
     }
 
+    public Player playerForSession(WebSocketSession session) {
+        String roomId = attr(session, ATTR_ROOM), playerId = attr(session, ATTR_PLAYER);
+        if (roomId == null || playerId == null) return null;
+        Room room = rooms.get(roomId);
+        if (room == null) return null;
+        synchronized (room) { return room.players.get(playerId); }
+    }
+
+    public Room getRoomFromSnapshot(Map<String,Object> snapshot) {
+        Object id = snapshot == null ? null : snapshot.get("roomId");
+        return id instanceof String ? rooms.get((String) id) : null;
+    }
+
     public String playerId(WebSocketSession session) {
         String id = attr(session, ATTR_PLAYER);
         if (id == null) throw new IllegalArgumentException("玩家身份无效");
