@@ -66,9 +66,9 @@ class EitherOrGameServiceTest {
     void tieDoesNotAwardPointsAndHostControlsNextQuestion() {
         game.start(room.roomId, hostId, 1_000L);
         game.submit(room.roomId, hostId, "A", 2_000L);
-        var result = game.submit(room.roomId, playerB, "B", 3_000L);
-        assertNotNull(result.result());
-        assertEquals("TIE", result.result().minority());
+        game.submit(room.roomId, playerB, "B", 3_000L);
+        var result = game.processTimers(11_000L).get(0);
+        assertEquals("TIE", result.minority());
         assertEquals(0, room.players.get(hostId).score);
         assertEquals(0, room.players.get(playerB).score);
         assertThrows(IllegalArgumentException.class, () -> game.next(room.roomId, playerB, 4_000L));
