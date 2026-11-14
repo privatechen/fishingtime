@@ -37,6 +37,21 @@ public class DrawGuessGameService {
         }
     }
 
+    public RoundSetup startRematch(String roomId, long now) {
+        DrawGuessRoom room = manager.get(roomId);
+        synchronized (room) {
+            requireState(room, DrawGuessState.GAME_OVER);
+            long online = room.getPlayers().values().stream().filter(DrawGuessPlayer::isOnline).count();
+            if (online < DrawGuessManager.MIN_PLAYERS) throw new IllegalArgumentException("至少需要两名在线玩家");
+            for (DrawGuessPlayer player : room.getPlayers().values()) player.setTotalScore(0);
+            room.setCurrentRound(1);
+            room.getArtists().clear();
+            room.getUsedWordIds().clear();
+            room.clearRematch();
+            return beginRound(room, now);
+        }
+    }
+
     public RoundSetup nextRound(String roomId, String playerId, long now) {
         DrawGuessRoom room = manager.get(roomId);
         synchronized (room) {
