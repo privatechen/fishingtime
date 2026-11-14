@@ -27,6 +27,8 @@ public class DrawGuessRoom {
     private long updatedAt;
     private long nextStrokeId = 1;
     private int totalDrawingPoints;
+    private final Map<String, Boolean> rematchVotes = new LinkedHashMap<>();
+    private long rematchDeadline;
 
     public DrawGuessRoom(String roomId) { this.roomId = roomId; this.updatedAt = System.currentTimeMillis(); }
     public String getRoomId() { return roomId; }
@@ -59,6 +61,10 @@ public class DrawGuessRoom {
 
     public List<DrawStroke> getStrokes() { return strokes; }
     public long nextStrokeId() { return nextStrokeId++; }
+    public Map<String, Boolean> getRematchVotes() { return rematchVotes; }
+    public long getRematchDeadline() { return rematchDeadline; }
+    public void setRematchDeadline(long value) { rematchDeadline = value; }
+    public void clearRematch() { rematchVotes.clear(); rematchDeadline = 0; }
     public int getTotalDrawingPoints() { return totalDrawingPoints; }
     public void addDrawingPoints(int count) { totalDrawingPoints += count; }
     public void resetDrawing() { strokes.clear(); totalDrawingPoints = 0; nextStrokeId = 1; }
