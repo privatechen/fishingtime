@@ -102,6 +102,51 @@ public class DrawGuessManager {
         }
     }
 
+    /**
+     * Move accepted online players into a fresh room while declined players
+     * remain in the completed room with their original result and scores.
+     */
+    public DrawGuessRoom splitForRematch(DrawGuessRoom source, java.util.Set<String> acceptedPlayerIds) {
+        synchronized (this) {
+            synchronized (source) {
+                if (source.getState() != DrawGuessState.GAME_OVER) throw new IllegalArgumentException("当前不能拆分再来一局房间");
+                if (acceptedPlayerIds == null || acceptedPlayerIds.size() < MIN_PLAYERS
+                        || !acceptedPlayerIds.contains(source.getHostPlayerId())) {
+                    throw new IllegalArgumentException("继续游戏的玩家不足两人");
+                }
+                for (String id : acceptedPlayerIds) {
+                    DrawGuessPlayer player = source.getPlayers().get(id);
+                    if (player == null || !player.isOnline() || player.getSession() == null
+                            || !player.getSession().isOpen()) {
+                        throw new IllegalArgumentException("继续游戏的玩家连接已失效");
+                    }
+                }
+                String newRoomId;
+                do { newRoomId = String.format("%04d", RANDOM.nextInt(10000)); }
+                while (rooms.containsKey(newRoomId) || newRoomId.equals(source.getRoomId()));
+
+                DrawGuessRoom target = new DrawGuessRoom(newRoomId);
+                target.setState(DrawGuessState.GAME_OVER);
+                target.setHostPlayerId(source.getHostPlayerId());
+                for (String id : acceptedPlayerIds) {
+                    DrawGuessPlayer player = source.getPlayers().remove(id);
+                    target.getPlayers().put(id, player);
+                    bindSession(player.getSession(), newRoomId, id);
+                }
+                if (!source.getPlayers().isEmpty()) {
+                    source.setHostPlayerId(source.getPlayers().values().stream()
+                            .filter(DrawGuessPlayer::isOnline).map(DrawGuessPlayer::getId)
+                            .findFirst().orElse(source.getPlayers().keySet().iterator().next()));
+                }
+                source.clearRematch();
+                source.touch();
+                target.touch();
+                rooms.put(newRoomId, target);
+                return target;
+            }
+        }
+    }
+
     public synchronized DrawGuessPlayer reconnect(WebSocketSession session, String roomId,
                                                    String playerId, String reconnectToken) {
         requireUnboundSession(session);
