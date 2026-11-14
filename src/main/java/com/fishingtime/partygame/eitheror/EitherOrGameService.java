@@ -38,6 +38,7 @@ public class EitherOrGameService {
                 room.touch();
                 return null;
             }
+            requireOnlinePlayers(room);
             return startNextQuestion(room, now);
         }
     }
