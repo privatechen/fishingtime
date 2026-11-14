@@ -84,6 +84,7 @@ public class EitherOrGameService {
     private QuestionStarted startNextQuestion(EitherOrManager.Room room, long now) {
         room.round++;
         room.currentQuestion = room.questions.get(room.round - 1);
+        room.lastResult = null;
         room.deadline = now + VOTE_DURATION_MILLIS;
         room.state = EitherOrManager.State.VOTING;
         for (EitherOrManager.Player player : room.players.values()) player.choice = null;
@@ -120,8 +121,13 @@ public class EitherOrGameService {
         room.resultAt = System.currentTimeMillis();
         room.touch();
         Map<String,Object> snapshot = manager.snapshot(room);
-        return new RoundResult(room.round, votesA, votesB, minority, scores, snapshot,
-                room.round >= room.totalRounds ? "GAME_OVER" : "RESULT");
+        RoundResult result = new RoundResult(room.round, votesA, votesB, minority, scores, snapshot, "RESULT");
+        Map<String,Object> saved = new LinkedHashMap<>();
+        saved.put("round", result.round()); saved.put("votesA", result.votesA());
+        saved.put("votesB", result.votesB()); saved.put("minority", result.minority());
+        saved.put("scores", result.scores()); saved.put("nextState", "RESULT");
+        room.lastResult = saved;
+        return result;
     }
 
     private boolean allOnlinePlayersVoted(EitherOrManager.Room room) {
