@@ -227,7 +227,7 @@ public class DrawGuessWebSocketRouter {
                     .filter(DrawGuessPlayer::isOnline)
                     .filter(p->Boolean.TRUE.equals(room.getRematchVotes().get(p.getId())))
                     .map(DrawGuessPlayer::getId).forEach(accepted::add);
-            allAccepted=accepted.size()==onlineCount;
+            allAccepted=accepted.size()==room.getPlayers().size();
         }
         if(accepted.size()<DrawGuessManager.MIN_PLAYERS) {
             synchronized(room) { room.clearRematch(); room.touch(); }
