@@ -156,6 +156,13 @@ public class EitherOrManager {
             v.put("hostPlayerId", room.hostPlayerId); v.put("state", room.state.name());
             v.put("round", room.round); v.put("totalRounds", room.totalRounds);
             v.put("players", players); v.put("maxPlayers", MAX_PLAYERS);
+            v.put("deadline", room.deadline);
+            if (room.currentQuestion != null) {
+                v.put("question", Map.of("id", room.currentQuestion.id(), "category", room.currentQuestion.category(),
+                        "title", room.currentQuestion.title(), "optionA", room.currentQuestion.optionA(),
+                        "optionB", room.currentQuestion.optionB()));
+            }
+            if (room.lastResult != null) v.put("lastResult", room.lastResult);
             return v;
         }
     }
@@ -216,6 +223,7 @@ public class EitherOrManager {
         public long deadline;
         public long updatedAt = System.currentTimeMillis();
         public long resultAt;
+        public Map<String,Object> lastResult;
         public Room(String roomId) { this.roomId = roomId; }
         public void touch() { updatedAt = System.currentTimeMillis(); }
     }
