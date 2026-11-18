@@ -12,7 +12,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketSession;
 
-import java.util.LinkedHashMap;
+import java.util.LinkedHashMap;\nimport java.util.List;
 import java.util.Map;
 
 @Component
@@ -51,6 +51,30 @@ public class UndercoverWebSocketRouter {
                             "playerId", player.id,
                             "reconnectToken", player.reconnectToken));
                 }
+                case "UC_START_GAME" -> {
+                    List<Player> players = manager.startGame(session);
+                    Room room = manager.roomFor(session);
+                    for (Player target : players) {
+                        if (target.session != null && target.online) {
+                            send(target.session, "UC_GAME_STARTED", Map.of(
+                                    "playerId", target.id,
+                                    "role", target.role,
+                                    "word", target.word,
+                                    "round", room.round));
+                        }
+                    }
+                    broadcast(room, "UC_ROOM_UPDATED", manager.snapshot(room));
+                }
+                case "UC_READY" -> {
+                    boolean allReady = manager.markReady(session);
+                    Room room = manager.roomFor(session);
+                    broadcast(room, "UC_PLAYER_READY", manager.snapshot(room));
+                    if (allReady) {
+                        broadcast(room, "UC_ALL_READY", Map.of(
+                                "message", "所有玩家已准备，下一阶段进入描述环节",
+                                "round", room.round));
+                    }
+                }
                 case "UC_RECONNECT" -> {
                     Player player = manager.reconnect(session, required(body, "roomId"),
                             required(body, "playerId"), required(body, "reconnectToken"));
@@ -59,6 +83,15 @@ public class UndercoverWebSocketRouter {
                             "room", manager.snapshot(room),
                             "playerId", player.id,
                             "reconnectToken", player.reconnectToken));
+                    if (room.state == com.fishingtime.partygame.undercover.UndercoverState.ROLE_REVEAL
+                            && player.role != null && player.word != null) {
+                        send(session, "UC_GAME_STARTED", Map.of(
+                                "playerId", player.id,
+                                "role", player.role,
+                                "word", player.word,
+                                "round", room.round,
+                                "ready", player.ready));
+                    }
                     broadcastExcept(room, session, "UC_ROOM_UPDATED", manager.snapshot(room));
                 }
                 case "UC_LEAVE_ROOM" -> {
