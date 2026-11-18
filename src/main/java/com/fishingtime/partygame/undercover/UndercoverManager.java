@@ -462,7 +462,8 @@ public class UndercoverManager {
                 item.put("playerId", p.id);
                 item.put("nickname", p.nickname);
                 item.put("online", p.online);
-                item.put("alive", p.alive);\n                item.put("ready", p.ready);
+                item.put("alive", p.alive);
+                item.put("ready", p.ready);
                 item.put("host", p.id.equals(room.hostPlayerId));
                 return item;
             }).toList();
@@ -472,7 +473,8 @@ public class UndercoverManager {
             result.put("gameType", "undercover");
             result.put("hostPlayerId", room.hostPlayerId);
             result.put("state", room.state.name());
-            result.put("round", room.round);\n            result.put("allReady", room.players.values().stream().filter(p -> p.online).allMatch(p -> p.ready));
+            result.put("round", room.round);
+            result.put("allReady", room.players.values().stream().filter(p -> p.online).allMatch(p -> p.ready));
             result.put("speakingOrder", room.speakingOrder);
             result.put("speakingIndex", room.speakingIndex);
             result.put("currentSpeakerId", currentSpeakerId(room));
