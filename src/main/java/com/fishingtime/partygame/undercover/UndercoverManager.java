@@ -131,6 +131,10 @@ public class UndercoverManager {
                     || !player.session.getId().equals(session.getId())) return null;
             player.online = false;
             player.session = null;
+            if (room.state == UndercoverState.SPEAKING
+                    && playerId.equals(currentSpeakerId(room))) {
+                advanceSpeakerLocked(room);
+            }
             if (playerId.equals(room.hostPlayerId)) {
                 room.hostPlayerId = room.players.values().stream()
                         .filter(p -> p.online)
