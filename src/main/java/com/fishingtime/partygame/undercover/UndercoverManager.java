@@ -169,6 +169,64 @@ public class UndercoverManager {
         }
     }
 
+    public List<Player> startGame(WebSocketSession session) {
+        Room room = roomFor(session);
+        synchronized (room) {
+            String playerId = playerId(session);
+            if (!playerId.equals(room.hostPlayerId)) {
+                throw new IllegalArgumentException("只有房主可以开始游戏");
+            }
+            if (room.state != UndercoverState.WAITING) {
+                throw new IllegalArgumentException("游戏已经开始");
+            }
+            List<Player> active = room.players.values().stream()
+                    .filter(p -> p.online && p.session != null && p.session.isOpen())
+                    .collect(java.util.stream.Collectors.toCollection(ArrayList::new));
+            if (active.size() < MIN_PLAYERS) {
+                throw new IllegalArgumentException("至少需要 3 位在线玩家才能开始");
+            }
+
+            String[] pair = UndercoverWordBank.PAIRS.get(RANDOM.nextInt(UndercoverWordBank.PAIRS.size()));
+            room.civilianWord = pair[0];
+            room.undercoverWord = pair[1];
+            int undercoverCount = active.size() <= 5 ? 1 : active.size() <= 8 ? 2 : 3;
+            Collections.shuffle(active, RANDOM);
+            for (int i = 0; i < active.size(); i++) {
+                Player player = active.get(i);
+                player.role = i < undercoverCount ? "UNDERCOVER" : "CIVILIAN";
+                player.word = i < undercoverCount ? room.undercoverWord : room.civilianWord;
+                player.ready = false;
+                player.alive = true;
+            }
+            room.round = 1;
+            room.state = UndercoverState.ROLE_REVEAL;
+            room.touch();
+            return new ArrayList<>(active);
+        }
+    }
+
+    public boolean markReady(WebSocketSession session) {
+        Room room = roomFor(session);
+        synchronized (room) {
+            if (room.state != UndercoverState.ROLE_REVEAL) {
+                throw new IllegalArgumentException("当前不是查看词语阶段");
+            }
+            Player player = room.players.get(playerId(session));
+            if (!player.online) throw new IllegalArgumentException("当前玩家已离线");
+            player.ready = true;
+            room.touch();
+            return room.players.values().stream()
+                    .filter(p -> p.online)
+                    .allMatch(p -> p.ready);
+        }
+    }
+
+    public List<Player> players(Room room) {
+        synchronized (room) {
+            return new ArrayList<>(room.players.values());
+        }
+    }
+
     public List<WebSocketSession> sessions(Room room) {
         synchronized (room) {
             return room.players.values().stream()
@@ -189,7 +247,7 @@ public class UndercoverManager {
                 item.put("playerId", p.id);
                 item.put("nickname", p.nickname);
                 item.put("online", p.online);
-                item.put("alive", p.alive);
+                item.put("alive", p.alive);\n                item.put("ready", p.ready);
                 item.put("host", p.id.equals(room.hostPlayerId));
                 return item;
             }).toList();
@@ -199,7 +257,7 @@ public class UndercoverManager {
             result.put("gameType", "undercover");
             result.put("hostPlayerId", room.hostPlayerId);
             result.put("state", room.state.name());
-            result.put("round", room.round);
+            result.put("round", room.round);\n            result.put("allReady", room.players.values().stream().filter(p -> p.online).allMatch(p -> p.ready));
             result.put("players", players);
             result.put("maxPlayers", MAX_PLAYERS);
             return result;
