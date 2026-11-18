@@ -11,7 +11,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 @Component
 public class UndercoverManager {
-    public static final int MIN_PLAYERS = 4;
+    public static final int MIN_PLAYERS = 3;
     public static final int MAX_PLAYERS = 12;
     private static final long ROOM_TTL_MILLIS = 30 * 60 * 1000L;
     private static final SecureRandom RANDOM = new SecureRandom();
