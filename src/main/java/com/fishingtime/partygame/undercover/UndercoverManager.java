@@ -273,8 +273,7 @@ public class UndercoverManager {
             room.speakingIndex++;
         }
         if (room.speakingIndex >= room.speakingOrder.size()) {
-            room.state = UndercoverState.VOTING;
-            room.speakingDeadline = 0L;
+            startVotingLocked(room);
         } else {
             room.speakingDeadline = System.currentTimeMillis() + 15_000L;
         }
@@ -284,6 +283,123 @@ public class UndercoverManager {
     private String currentSpeakerId(Room room) {
         if (room.speakingIndex < 0 || room.speakingIndex >= room.speakingOrder.size()) return null;
         return room.speakingOrder.get(room.speakingIndex);
+    }
+
+    private void startVotingLocked(Room room) {
+        room.state = UndercoverState.VOTING;
+        room.votes.clear();
+        room.voteDeadline = System.currentTimeMillis() + 15_000L;
+        room.touch();
+    }
+
+    public Map<String,Object> submitVote(WebSocketSession session, String targetPlayerId) {
+        Room room = roomFor(session);
+        synchronized (room) {
+            if (room.state != UndercoverState.VOTING) {
+                throw new IllegalArgumentException("当前不是投票阶段");
+            }
+            String voterId = playerId(session);
+            Player voter = room.players.get(voterId);
+            Player target = room.players.get(targetPlayerId);
+            if (voter == null || !voter.online || !voter.alive) {
+                throw new IllegalArgumentException("当前玩家不能投票");
+            }
+            if (target == null || !target.alive || !target.online) {
+                throw new IllegalArgumentException("请选择一位在线且未淘汰的玩家");
+            }
+            if (voterId.equals(targetPlayerId)) {
+                throw new IllegalArgumentException("不能投给自己");
+            }
+            if (room.votes.containsKey(voterId)) {
+                throw new IllegalArgumentException("你已经投过票了");
+            }
+            room.votes.put(voterId, targetPlayerId);
+            room.touch();
+            if (eligibleVoters(room).stream().allMatch(room.votes::containsKey)) {
+                return resolveVoteLocked(room);
+            }
+            Map<String,Object> status = new LinkedHashMap<>();
+            status.put("votedCount", room.votes.size());
+            status.put("eligibleCount", eligibleVoters(room).size());
+            status.put("allVoted", false);
+            return status;
+        }
+    }
+
+    public boolean resolveVoteIfExpired(Room room, long now) {
+        synchronized (room) {
+            if (room.state != UndercoverState.VOTING || room.voteDeadline > now) return false;
+            resolveVoteLocked(room);
+            return true;
+        }
+    }
+
+    public Map<String,Object> resolveVote(Room room) {
+        synchronized (room) {
+            if (room.state != UndercoverState.VOTING) {
+                throw new IllegalArgumentException("投票结果已经产生");
+            }
+            return resolveVoteLocked(room);
+        }
+    }
+
+    private List<String> eligibleVoters(Room room) {
+        return room.players.values().stream()
+                .filter(p -> p.online && p.alive)
+                .map(p -> p.id)
+                .toList();
+    }
+
+    private Map<String,Object> resolveVoteLocked(Room room) {
+        Map<String,Integer> tally = new LinkedHashMap<>();
+        for (String targetId : room.votes.values()) tally.merge(targetId, 1, Integer::sum);
+        int highest = tally.values().stream().mapToInt(Integer::intValue).max().orElse(0);
+        List<String> leaders = tally.entrySet().stream()
+                .filter(e -> e.getValue() == highest && highest > 0)
+                .map(Map.Entry::getKey)
+                .toList();
+        String eliminatedId = leaders.size() == 1 ? leaders.get(0) : null;
+        Player eliminated = eliminatedId == null ? null : room.players.get(eliminatedId);
+        if (eliminated != null) eliminated.alive = false;
+
+        long undercoverAlive = room.players.values().stream()
+                .filter(p -> p.alive && "UNDERCOVER".equals(p.role)).count();
+        long civilianAlive = room.players.values().stream()
+                .filter(p -> p.alive && "CIVILIAN".equals(p.role)).count();
+        String winner = null;
+        if (undercoverAlive == 0) winner = "CIVILIAN";
+        else if (undercoverAlive >= civilianAlive) winner = "UNDERCOVER";
+
+        room.state = winner == null ? UndercoverState.ELIMINATION : UndercoverState.GAME_OVER;
+        room.voteDeadline = 0L;
+        room.touch();
+
+        List<Map<String,Object>> results = room.players.values().stream()
+                .filter(p -> p.alive || p.id.equals(eliminatedId))
+                .map(p -> {
+                    Map<String,Object> item = new LinkedHashMap<>();
+                    item.put("playerId", p.id);
+                    item.put("nickname", p.nickname);
+                    item.put("votes", tally.getOrDefault(p.id, 0));
+                    item.put("eliminated", p.id.equals(eliminatedId));
+                    item.put("role", p.id.equals(eliminatedId) ? p.role : null);
+                    return item;
+                })
+                .toList();
+        Map<String,Object> result = new LinkedHashMap<>();
+        result.put("eliminatedPlayerId", eliminatedId);
+        result.put("eliminatedNickname", eliminated == null ? null : eliminated.nickname);
+        result.put("eliminatedRole", eliminated == null ? null : eliminated.role);
+        result.put("tie", eliminatedId == null);
+        result.put("winner", winner);
+        result.put("gameOver", winner != null);
+        result.put("results", results);
+        result.put("round", room.round);
+        return result;
+    }
+
+    public boolean hasVoted(Room room, String playerId) {
+        synchronized (room) { return room.votes.containsKey(playerId); }
     }
 
     public List<Player> players(Room room) {
@@ -327,6 +443,9 @@ public class UndercoverManager {
             result.put("speakingIndex", room.speakingIndex);
             result.put("currentSpeakerId", currentSpeakerId(room));
             result.put("speakingDeadline", room.speakingDeadline);
+            result.put("voteDeadline", room.voteDeadline);
+            result.put("votedCount", room.votes.size());
+            result.put("eligibleVoterCount", eligibleVoters(room).size());
             result.put("serverTime", System.currentTimeMillis());
             result.put("players", players);
             result.put("maxPlayers", MAX_PLAYERS);
@@ -390,6 +509,8 @@ public class UndercoverManager {
         public List<String> speakingOrder = new ArrayList<>();
         public int speakingIndex;
         public long speakingDeadline;
+        public long voteDeadline;
+        public final Map<String,String> votes = new LinkedHashMap<>();
         public long updatedAt = System.currentTimeMillis();
 
         public Room(String roomId) { this.roomId = roomId; }
