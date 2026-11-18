@@ -530,15 +530,15 @@ public class UndercoverManager {
         String requested = nickname == null || nickname.isBlank() ? "玩家" : nickname.trim();
         if (requested.length() > 12) requested = requested.substring(0, 12);
 
-        final String requestedName = requested;
-        boolean duplicated = room.players.values().stream()
-                .anyMatch(existing -> requestedName.equals(existing.nickname));
+        Set<String> existingNames = room.players.values().stream()
+                .map(existing -> existing.nickname)
+                .collect(java.util.stream.Collectors.toSet());
         String value = requested;
-        if (duplicated) {
+        if (existingNames.contains(requested)) {
             int suffix = 1;
             do {
                 value = "玩家" + suffix++;
-            } while (room.players.values().stream().anyMatch(existing -> value.equals(existing.nickname)));
+            } while (existingNames.contains(value));
         }
         return new Player(UUID.randomUUID().toString(), value, UUID.randomUUID().toString(), session);
     }
