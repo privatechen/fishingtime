@@ -161,6 +161,8 @@ public class UndercoverManager {
                 advanceSpeakerLocked(room);
             }
             room.players.remove(playerId);
+            room.votes.remove(playerId);
+            room.votes.values().removeIf(playerId::equals);
             if (room.players.isEmpty()) {
                 rooms.remove(roomId, room);
                 return room;
