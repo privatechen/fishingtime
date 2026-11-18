@@ -326,11 +326,10 @@ public class UndercoverManager {
         }
     }
 
-    public boolean resolveVoteIfExpired(Room room, long now) {
+    public Map<String,Object> resolveVoteIfExpired(Room room, long now) {
         synchronized (room) {
-            if (room.state != UndercoverState.VOTING || room.voteDeadline > now) return false;
-            resolveVoteLocked(room);
-            return true;
+            if (room.state != UndercoverState.VOTING || room.voteDeadline > now) return null;
+            return resolveVoteLocked(room);
         }
     }
 
@@ -395,6 +394,7 @@ public class UndercoverManager {
         result.put("gameOver", winner != null);
         result.put("results", results);
         result.put("round", room.round);
+        result.put("allVoted", true);
         return result;
     }
 
