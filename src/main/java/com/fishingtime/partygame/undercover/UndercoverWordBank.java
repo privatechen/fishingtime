@@ -32,7 +32,7 @@ final class UndercoverWordBank {
         new String[]{"老板","经理"}, new String[]{"演员","歌手"}, new String[]{"画家","摄影师"}, new String[]{"科学家","工程师"},
         new String[]{"春天","秋天"}, new String[]{"夏天","冬天"}, new String[]{"日出","日落"}, new String[]{"晴天","阴天"},
         new String[]{"台风","龙卷风"}, new String[]{"闪电","雷声"}, new String[]{"雾","霾"}, new String[]{"雪","冰雹"},
-        new String[]{"山峰","丘陵"}, new String[]{"河流","湖泊"}, new String[]{"大海"," ocean"}, new String[]{"瀑布","喷泉"},
+        new String[]{"山峰","丘陵"}, new String[]{"河流","湖泊"}, new String[]{"大海","海洋"}, new String[]{"瀑布","喷泉"},
         new String[]{"沙漠","草原"}, new String[]{"森林","竹林"}, new String[]{"岛屿","半岛"}, new String[]{"山洞","隧道"},
         new String[]{"太阳","月亮"}, new String[]{"地球","火星"}, new String[]{"星星","流星"}, new String[]{"彗星","卫星"},
         new String[]{"钻石","水晶"}, new String[]{"黄金","白银"}, new String[]{"珍珠","贝壳"}, new String[]{"翡翠","玉石"},
