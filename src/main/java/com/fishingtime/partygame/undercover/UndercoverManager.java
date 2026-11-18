@@ -214,11 +214,68 @@ public class UndercoverManager {
             Player player = room.players.get(playerId(session));
             if (!player.online) throw new IllegalArgumentException("当前玩家已离线");
             player.ready = true;
-            room.touch();
-            return room.players.values().stream()
+            boolean allReady = room.players.values().stream()
                     .filter(p -> p.online)
                     .allMatch(p -> p.ready);
+            if (allReady) {
+                room.speakingOrder = room.players.values().stream()
+                        .filter(p -> p.online && p.alive)
+                        .map(p -> p.id)
+                        .collect(java.util.stream.Collectors.toCollection(ArrayList::new));
+                Collections.shuffle(room.speakingOrder, RANDOM);
+                room.speakingIndex = 0;
+                room.state = UndercoverState.SPEAKING;
+                room.speakingDeadline = System.currentTimeMillis() + 15_000L;
+            }
+            room.touch();
+            return allReady;
         }
+    }
+
+    public boolean speakerDone(WebSocketSession session) {
+        Room room = roomFor(session);
+        synchronized (room) {
+            if (room.state != UndercoverState.SPEAKING) {
+                throw new IllegalArgumentException("当前不是描述阶段");
+            }
+            String playerId = playerId(session);
+            if (!playerId.equals(currentSpeakerId(room))) {
+                throw new IllegalArgumentException("现在还没轮到你描述");
+            }
+            advanceSpeakerLocked(room);
+            return room.state == UndercoverState.VOTING;
+        }
+    }
+
+    public boolean advanceSpeakerIfExpired(Room room, long now) {
+        synchronized (room) {
+            if (room.state != UndercoverState.SPEAKING || room.speakingDeadline > now) {
+                return false;
+            }
+            advanceSpeakerLocked(room);
+            return true;
+        }
+    }
+
+    private void advanceSpeakerLocked(Room room) {
+        room.speakingIndex++;
+        while (room.speakingIndex < room.speakingOrder.size()) {
+            Player next = room.players.get(room.speakingOrder.get(room.speakingIndex));
+            if (next != null && next.online && next.alive) break;
+            room.speakingIndex++;
+        }
+        if (room.speakingIndex >= room.speakingOrder.size()) {
+            room.state = UndercoverState.VOTING;
+            room.speakingDeadline = 0L;
+        } else {
+            room.speakingDeadline = System.currentTimeMillis() + 15_000L;
+        }
+        room.touch();
+    }
+
+    private String currentSpeakerId(Room room) {
+        if (room.speakingIndex < 0 || room.speakingIndex >= room.speakingOrder.size()) return null;
+        return room.speakingOrder.get(room.speakingIndex);
     }
 
     public List<Player> players(Room room) {
@@ -258,6 +315,11 @@ public class UndercoverManager {
             result.put("hostPlayerId", room.hostPlayerId);
             result.put("state", room.state.name());
             result.put("round", room.round);\n            result.put("allReady", room.players.values().stream().filter(p -> p.online).allMatch(p -> p.ready));
+            result.put("speakingOrder", room.speakingOrder);
+            result.put("speakingIndex", room.speakingIndex);
+            result.put("currentSpeakerId", currentSpeakerId(room));
+            result.put("speakingDeadline", room.speakingDeadline);
+            result.put("serverTime", System.currentTimeMillis());
             result.put("players", players);
             result.put("maxPlayers", MAX_PLAYERS);
             return result;
@@ -317,6 +379,9 @@ public class UndercoverManager {
         public int round;
         public String civilianWord;
         public String undercoverWord;
+        public List<String> speakingOrder = new ArrayList<>();
+        public int speakingIndex;
+        public long speakingDeadline;
         public long updatedAt = System.currentTimeMillis();
 
         public Room(String roomId) { this.roomId = roomId; }
