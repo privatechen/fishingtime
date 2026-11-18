@@ -28,7 +28,7 @@ public class UndercoverManager {
         while (rooms.containsKey(roomId));
 
         Room room = new Room(roomId);
-        Player host = newPlayer(session, nickname);
+        Player host = newPlayer(session, nickname, room);
         room.players.put(host.id, host);
         room.hostPlayerId = host.id;
         rooms.put(roomId, room);
@@ -47,7 +47,7 @@ public class UndercoverManager {
             if (room.players.size() >= MAX_PLAYERS) {
                 throw new IllegalArgumentException("房间已满");
             }
-            Player player = newPlayer(session, nickname);
+            Player player = newPlayer(session, nickname, room);
             room.players.put(player.id, player);
             bind(session, roomId, player.id);
             room.touch();
@@ -526,9 +526,20 @@ public class UndercoverManager {
         rooms.entrySet().removeIf(e -> now - e.getValue().updatedAt > ROOM_TTL_MILLIS);
     }
 
-    private Player newPlayer(WebSocketSession session, String nickname) {
-        String value = nickname == null || nickname.isBlank() ? "玩家" : nickname.trim();
-        if (value.length() > 12) value = value.substring(0, 12);
+    private Player newPlayer(WebSocketSession session, String nickname, Room room) {
+        String requested = nickname == null || nickname.isBlank() ? "玩家" : nickname.trim();
+        if (requested.length() > 12) requested = requested.substring(0, 12);
+
+        final String requestedName = requested;
+        boolean duplicated = room.players.values().stream()
+                .anyMatch(existing -> requestedName.equals(existing.nickname));
+        String value = requested;
+        if (duplicated) {
+            int suffix = 1;
+            do {
+                value = "玩家" + suffix++;
+            } while (room.players.values().stream().anyMatch(existing -> value.equals(existing.nickname)));
+        }
         return new Player(UUID.randomUUID().toString(), value, UUID.randomUUID().toString(), session);
     }
 
