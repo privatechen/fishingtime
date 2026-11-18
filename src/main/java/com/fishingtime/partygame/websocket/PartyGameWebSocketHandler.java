@@ -23,12 +23,15 @@ public class PartyGameWebSocketHandler extends TextWebSocketHandler {
     private final ObjectMapper mapper;
     private final DrawGuessWebSocketRouter drawGuess;
     private final EitherOrWebSocketRouter eitherOr;
+    private final UndercoverWebSocketRouter undercover;
 
-    public PartyGameWebSocketHandler(RoomManager rooms, ObjectMapper mapper, DrawGuessWebSocketRouter drawGuess, EitherOrWebSocketRouter eitherOr) {
+    public PartyGameWebSocketHandler(RoomManager rooms, ObjectMapper mapper, DrawGuessWebSocketRouter drawGuess,
+                                     EitherOrWebSocketRouter eitherOr, UndercoverWebSocketRouter undercover) {
         this.rooms = rooms;
         this.mapper = mapper;
         this.drawGuess = drawGuess;
         this.eitherOr = eitherOr;
+        this.undercover = undercover;
     }
 
     @Override
@@ -50,6 +53,10 @@ public class PartyGameWebSocketHandler extends TextWebSocketHandler {
             }
             if (drawGuess.supports(type)) {
                 drawGuess.handle(session, body, type);
+                return;
+            }
+            if (undercover.supports(type)) {
+                undercover.handle(session, body, type);
                 return;
             }
             switch (type) {
@@ -132,6 +139,10 @@ public class PartyGameWebSocketHandler extends TextWebSocketHandler {
         }
         if (session.getAttributes().containsKey("drawGuessRoomId")) {
             drawGuess.disconnected(session);
+            return;
+        }
+        if (session.getAttributes().containsKey("undercoverRoomId")) {
+            undercover.disconnected(session);
             return;
         }
         rooms.markDisconnected(session);
