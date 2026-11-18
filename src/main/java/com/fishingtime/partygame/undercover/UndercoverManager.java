@@ -315,6 +315,8 @@ public class UndercoverManager {
         public UndercoverState state = UndercoverState.WAITING;
         public String hostPlayerId;
         public int round;
+        public String civilianWord;
+        public String undercoverWord;
         public long updatedAt = System.currentTimeMillis();
 
         public Room(String roomId) { this.roomId = roomId; }
@@ -328,6 +330,9 @@ public class UndercoverManager {
         public WebSocketSession session;
         public boolean online = true;
         public boolean alive = true;
+        public boolean ready;
+        public String role;
+        public String word;
 
         public Player(String id, String nickname, String reconnectToken, WebSocketSession session) {
             this.id=id; this.nickname=nickname; this.reconnectToken=reconnectToken; this.session=session;
