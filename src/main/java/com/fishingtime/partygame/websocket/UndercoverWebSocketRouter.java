@@ -80,6 +80,16 @@ public class UndercoverWebSocketRouter {
                     Room room = manager.roomFor(session);
                     broadcast(room, "UC_SPEAKER_CHANGED", manager.snapshot(room));
                 }
+                case "UC_VOTE" -> {
+                    String targetPlayerId = required(body, "targetPlayerId");
+                    Room room = manager.roomFor(session);
+                    Map<String,Object> vote = manager.submitVote(session, targetPlayerId);
+                    if (Boolean.TRUE.equals(vote.get("allVoted"))) {
+                        broadcast(room, "UC_VOTE_RESULT", vote);
+                    } else {
+                        broadcast(room, "UC_VOTE_PROGRESS", vote);
+                    }
+                }
                 case "UC_RECONNECT" -> {
                     Player player = manager.reconnect(session, required(body, "roomId"),
                             required(body, "playerId"), required(body, "reconnectToken"));
@@ -90,7 +100,8 @@ public class UndercoverWebSocketRouter {
                             "reconnectToken", player.reconnectToken,
                             "role", player.role == null ? "" : player.role,
                             "word", player.word == null ? "" : player.word,
-                            "ready", player.ready));
+                            "ready", player.ready,
+                            "hasVoted", manager.hasVoted(room, player.id)));
                     broadcastExcept(room, session, "UC_ROOM_UPDATED", manager.snapshot(room));
                 }
                 case "UC_LEAVE_ROOM" -> {
@@ -125,14 +136,19 @@ public class UndercoverWebSocketRouter {
     }
 
     @Scheduled(fixedDelay = 1000)
-    public void advanceSpeakingTurns() {
+    public void advanceTimedPhases() {
+        long now = System.currentTimeMillis();
         for (Room room : manager.allRooms()) {
-            if (manager.advanceSpeakerIfExpired(room, System.currentTimeMillis())) {
-                try {
+            try {
+                if (manager.advanceSpeakerIfExpired(room, now)) {
                     broadcast(room, "UC_SPEAKER_CHANGED", manager.snapshot(room));
-                } catch (Exception ex) {
-                    log.warn("[Undercover] speaking turn broadcast failed, room={}", room.roomId, ex);
                 }
+                Map<String,Object> voteResult = manager.resolveVoteIfExpired(room, now);
+                if (voteResult != null) {
+                    broadcast(room, "UC_VOTE_RESULT", voteResult);
+                }
+            } catch (Exception ex) {
+                log.warn("[Undercover] timed phase update failed, room={}", room.roomId, ex);
             }
         }
     }
