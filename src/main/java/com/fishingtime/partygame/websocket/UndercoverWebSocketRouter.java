@@ -68,12 +68,16 @@ public class UndercoverWebSocketRouter {
                 case "UC_READY" -> {
                     boolean allReady = manager.markReady(session);
                     Room room = manager.roomFor(session);
-                    broadcast(room, "UC_PLAYER_READY", manager.snapshot(room));
                     if (allReady) {
-                        broadcast(room, "UC_ALL_READY", Map.of(
-                                "message", "所有玩家已准备，下一阶段进入描述环节",
-                                "round", room.round));
+                        broadcast(room, "UC_SPEAKING_STARTED", manager.snapshot(room));
+                    } else {
+                        broadcast(room, "UC_PLAYER_READY", manager.snapshot(room));
                     }
+                }
+                case "UC_SPEAKER_DONE" -> {
+                    manager.speakerDone(session);
+                    Room room = manager.roomFor(session);
+                    broadcast(room, "UC_SPEAKER_CHANGED", manager.snapshot(room));
                 }
                 case "UC_RECONNECT" -> {
                     Player player = manager.reconnect(session, required(body, "roomId"),
@@ -82,16 +86,10 @@ public class UndercoverWebSocketRouter {
                     send(session, "UC_RECONNECTED", Map.of(
                             "room", manager.snapshot(room),
                             "playerId", player.id,
-                            "reconnectToken", player.reconnectToken));
-                    if (room.state == com.fishingtime.partygame.undercover.UndercoverState.ROLE_REVEAL
-                            && player.role != null && player.word != null) {
-                        send(session, "UC_GAME_STARTED", Map.of(
-                                "playerId", player.id,
-                                "role", player.role,
-                                "word", player.word,
-                                "round", room.round,
-                                "ready", player.ready));
-                    }
+                            "reconnectToken", player.reconnectToken,
+                            "role", player.role == null ? "" : player.role,
+                            "word", player.word == null ? "" : player.word,
+                            "ready", player.ready));
                     broadcastExcept(room, session, "UC_ROOM_UPDATED", manager.snapshot(room));
                 }
                 case "UC_LEAVE_ROOM" -> {
@@ -122,6 +120,19 @@ public class UndercoverWebSocketRouter {
                     "room", manager.snapshot(room)));
         } catch (Exception ex) {
             log.warn("[Undercover] disconnect broadcast failed", ex);
+        }
+    }
+
+    @Scheduled(fixedDelay = 1000)
+    public void advanceSpeakingTurns() {
+        for (Room room : manager.allRooms()) {
+            if (manager.advanceSpeakerIfExpired(room, System.currentTimeMillis())) {
+                try {
+                    broadcast(room, "UC_SPEAKER_CHANGED", manager.snapshot(room));
+                } catch (Exception ex) {
+                    log.warn("[Undercover] speaking turn broadcast failed, room={}", room.roomId, ex);
+                }
+            }
         }
     }
 
