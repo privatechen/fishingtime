@@ -405,6 +405,36 @@ public class UndercoverManager {
         synchronized (room) { return room.lastVoteResult; }
     }
 
+    /**
+     * A player can return the completed game to its room lobby.
+     * The room and player identities are preserved so the same group can play again.
+     */
+    public void returnToWaitingRoom(WebSocketSession session) {
+        Room room = roomFor(session);
+        synchronized (room) {
+            if (room.state != UndercoverState.GAME_OVER) {
+                throw new IllegalArgumentException("只有游戏结束后才能返回房间");
+            }
+            for (Player player : room.players.values()) {
+                player.alive = true;
+                player.ready = false;
+                player.role = null;
+                player.word = null;
+            }
+            room.civilianWord = null;
+            room.undercoverWord = null;
+            room.round = 0;
+            room.speakingOrder = new ArrayList<>();
+            room.speakingIndex = 0;
+            room.speakingDeadline = 0L;
+            room.voteDeadline = 0L;
+            room.votes.clear();
+            room.lastVoteResult = null;
+            room.state = UndercoverState.WAITING;
+            room.touch();
+        }
+    }
+
     public void startNextRound(WebSocketSession session) {
         Room room = roomFor(session);
         synchronized (room) {
