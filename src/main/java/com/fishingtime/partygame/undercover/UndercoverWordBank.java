@@ -1,0 +1,60 @@
+package com.fishingtime.partygame.undercover;
+
+import java.util.List;
+
+final class UndercoverWordBank {
+    private UndercoverWordBank() {}
+
+    static final List<String[]> PAIRS = List.of(
+        new String[]{"奶茶","咖啡"}, new String[]{"可乐","雪碧"}, new String[]{"豆浆","牛奶"}, new String[]{"馒头","包子"},
+        new String[]{"饺子","馄饨"}, new String[]{"米饭","面条"}, new String[]{"蛋糕","面包"}, new String[]{"汉堡","三明治"},
+        new String[]{"火锅","麻辣烫"}, new String[]{"烧烤","炸串"}, new String[]{"粽子","月饼"}, new String[]{"汤圆","元宵"},
+        new String[]{"橙子","柚子"}, new String[]{"苹果","梨"}, new String[]{"桃子","李子"}, new String[]{"西瓜","哈密瓜"},
+        new String[]{"葡萄","提子"}, new String[]{"草莓","蓝莓"}, new String[]{"樱桃","车厘子"}, new String[]{"柠檬","青柠"},
+        new String[]{"老虎","狮子"}, new String[]{"猫","狗"}, new String[]{"兔子","松鼠"}, new String[]{"狐狸","狼"},
+        new String[]{"大象","犀牛"}, new String[]{"斑马","长颈鹿"}, new String[]{"海豚","鲸鱼"}, new String[]{"鲨鱼","鳄鱼"},
+        new String[]{"麻雀","燕子"}, new String[]{"鸽子","乌鸦"}, new String[]{"蝴蝶","飞蛾"}, new String[]{"蜜蜂","苍蝇"},
+        new String[]{"蜻蜓","蝉"}, new String[]{"乌龟","甲鱼"}, new String[]{"青蛙","蟾蜍"}, new String[]{"骆驼","马"},
+        new String[]{"公交车","地铁"}, new String[]{"高铁","动车"}, new String[]{"飞机","直升机"}, new String[]{"轮船","游艇"},
+        new String[]{"自行车","电动车"}, new String[]{"摩托车","电瓶车"}, new String[]{"出租车","网约车"}, new String[]{"轿车","越野车"},
+        new String[]{"手机","平板"}, new String[]{"电脑","笔记本"}, new String[]{"耳机","音响"}, new String[]{"相机","摄像机"},
+        new String[]{"电视","投影仪"}, new String[]{"冰箱","冰柜"}, new String[]{"空调","电风扇"}, new String[]{"洗衣机","烘干机"},
+        new String[]{"键盘","鼠标"}, new String[]{"手表","手环"}, new String[]{"台灯","落地灯"}, new String[]{"电饭煲","高压锅"},
+        new String[]{"篮球","足球"}, new String[]{"羽毛球","网球"}, new String[]{"乒乓球","壁球"}, new String[]{"排球","橄榄球"},
+        new String[]{"游泳","潜水"}, new String[]{"跑步","竞走"}, new String[]{"滑雪","滑冰"}, new String[]{"瑜伽","普拉提"},
+        new String[]{"吉他","尤克里里"}, new String[]{"钢琴","电子琴"}, new String[]{"小提琴","中提琴"}, new String[]{"架子鼓","手鼓"},
+        new String[]{"唱歌","跳舞"}, new String[]{"绘画","书法"}, new String[]{"摄影","摄像"}, new String[]{"钓鱼","捕虾"},
+        new String[]{"电影","电视剧"}, new String[]{"动画片","漫画"}, new String[]{"小说","散文"}, new String[]{"诗歌","歌词"},
+        new String[]{"图书馆","书店"}, new String[]{"电影院","剧院"}, new String[]{"博物馆","美术馆"}, new String[]{"公园","广场"},
+        new String[]{"学校","培训班"}, new String[]{"医院","诊所"}, new String[]{"超市","便利店"}, new String[]{"商场","集市"},
+        new String[]{"老师","教练"}, new String[]{"医生","护士"}, new String[]{"警察","消防员"}, new String[]{"律师","法官"},
+        new String[]{"厨师","营养师"}, new String[]{"记者","主持人"}, new String[]{"程序员","设计师"}, new String[]{"司机","飞行员"},
+        new String[]{"老板","经理"}, new String[]{"演员","歌手"}, new String[]{"画家","摄影师"}, new String[]{"科学家","工程师"},
+        new String[]{"春天","秋天"}, new String[]{"夏天","冬天"}, new String[]{"日出","日落"}, new String[]{"晴天","阴天"},
+        new String[]{"台风","龙卷风"}, new String[]{"闪电","雷声"}, new String[]{"雾","霾"}, new String[]{"雪","冰雹"},
+        new String[]{"山峰","丘陵"}, new String[]{"河流","湖泊"}, new String[]{"大海"," ocean"}, new String[]{"瀑布","喷泉"},
+        new String[]{"沙漠","草原"}, new String[]{"森林","竹林"}, new String[]{"岛屿","半岛"}, new String[]{"山洞","隧道"},
+        new String[]{"太阳","月亮"}, new String[]{"地球","火星"}, new String[]{"星星","流星"}, new String[]{"彗星","卫星"},
+        new String[]{"钻石","水晶"}, new String[]{"黄金","白银"}, new String[]{"珍珠","贝壳"}, new String[]{"翡翠","玉石"},
+        new String[]{"眼镜","墨镜"}, new String[]{"帽子","头盔"}, new String[]{"围巾","领带"}, new String[]{"手套","袜子"},
+        new String[]{"衬衫","T恤"}, new String[]{"牛仔裤","休闲裤"}, new String[]{"运动鞋","皮鞋"}, new String[]{"拖鞋","凉鞋"},
+        new String[]{"雨伞","雨衣"}, new String[]{"背包","行李箱"}, new String[]{"钱包","卡包"}, new String[]{"项链","手链"},
+        new String[]{"牙刷","梳子"}, new String[]{"毛巾","浴巾"}, new String[]{"洗发水","沐浴露"}, new String[]{"香水","花露水"},
+        new String[]{"沙发","躺椅"}, new String[]{"桌子","茶几"}, new String[]{"床","沙发床"}, new String[]{"衣柜","书柜"},
+        new String[]{"窗帘","百叶窗"}, new String[]{"地毯","地垫"}, new String[]{"枕头","靠垫"}, new String[]{"被子","毛毯"},
+        new String[]{"钢笔","圆珠笔"}, new String[]{"铅笔","蜡笔"}, new String[]{"橡皮","修正带"}, new String[]{"笔记本","便利贴"},
+        new String[]{"剪刀","美工刀"}, new String[]{"胶水","胶带"}, new String[]{"尺子","量角器"}, new String[]{"书包","文件袋"},
+        new String[]{"红色","橙色"}, new String[]{"蓝色","绿色"}, new String[]{"紫色","粉色"}, new String[]{"黑色","白色"},
+        new String[]{"方形","长方形"}, new String[]{"圆形","椭圆形"}, new String[]{"三角形","菱形"}, new String[]{"正方体","长方体"},
+        new String[]{"早餐","宵夜"}, new String[]{"午餐","晚餐"}, new String[]{"甜点","零食"}, new String[]{"水果","蔬菜"},
+        new String[]{"炒饭","盖浇饭"}, new String[]{"拉面","刀削面"}, new String[]{"寿司","饭团"}, new String[]{"披萨","馅饼"},
+        new String[]{"煎饼","蛋卷"}, new String[]{"冰淇淋","雪糕"}, new String[]{"果汁","汽水"}, new String[]{"酸奶","奶酪"},
+        new String[]{"辣椒","花椒"}, new String[]{"酱油","醋"}, new String[]{"蜂蜜","糖浆"}, new String[]{"盐","味精"},
+        new String[]{"火车站","汽车站"}, new String[]{"机场","港口"}, new String[]{"酒店","民宿"}, new String[]{"餐厅","食堂"},
+        new String[]{"银行","证券公司"}, new String[]{"邮局","快递站"}, new String[]{"加油站","充电站"}, new String[]{"停车场","车库"},
+        new String[]{"春节","中秋节"}, new String[]{"端午节","清明节"}, new String[]{"元旦","国庆节"}, new String[]{"生日","纪念日"},
+        new String[]{"婚礼","毕业典礼"}, new String[]{"面试","考试"}, new String[]{"旅行","出差"}, new String[]{"露营","野餐"},
+        new String[]{"地震","火山喷发"}, new String[]{"洪水","海啸"}, new String[]{"干旱","沙尘暴"}, new String[]{"彩虹","极光"},
+        new String[]{"电梯","扶梯"}, new String[]{"楼梯","坡道"}, new String[]{"桥梁","高架"}, new String[]{"公路","高速公路"}
+    );
+}
