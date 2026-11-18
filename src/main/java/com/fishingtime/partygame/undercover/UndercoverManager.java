@@ -156,6 +156,10 @@ public class UndercoverManager {
         Room room = rooms.get(roomId);
         if (room == null) return null;
         synchronized (room) {
+            if (room.state == UndercoverState.SPEAKING
+                    && playerId.equals(currentSpeakerId(room))) {
+                advanceSpeakerLocked(room);
+            }
             room.players.remove(playerId);
             if (room.players.isEmpty()) {
                 rooms.remove(roomId, room);
