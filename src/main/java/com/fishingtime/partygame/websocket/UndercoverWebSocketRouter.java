@@ -98,6 +98,11 @@ public class UndercoverWebSocketRouter {
                     Room room = manager.roomFor(session);
                     broadcast(room, "UC_SPEAKING_STARTED", manager.snapshot(room));
                 }
+                case "UC_RETURN_TO_ROOM" -> {
+                    manager.returnToWaitingRoom(session);
+                    Room room = manager.roomFor(session);
+                    broadcast(room, "UC_ROOM_RESET", manager.snapshot(room));
+                }
                 case "UC_RECONNECT" -> {
                     Player player = manager.reconnect(session, required(body, "roomId"),
                             required(body, "playerId"), required(body, "reconnectToken"));
