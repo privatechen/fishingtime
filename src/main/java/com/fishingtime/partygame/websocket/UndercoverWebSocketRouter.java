@@ -87,6 +87,9 @@ public class UndercoverWebSocketRouter {
                     if (Boolean.TRUE.equals(vote.get("allVoted"))) {
                         broadcast(room, "UC_VOTE_RESULT", vote);
                     } else {
+                        send(session, "UC_VOTE_ACCEPTED", Map.of(
+                                "votedCount", vote.get("votedCount"),
+                                "eligibleCount", vote.get("eligibleCount")));
                         broadcast(room, "UC_VOTE_PROGRESS", vote);
                     }
                 }
