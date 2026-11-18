@@ -90,6 +90,11 @@ public class UndercoverWebSocketRouter {
                         broadcast(room, "UC_VOTE_PROGRESS", vote);
                     }
                 }
+                case "UC_NEXT_ROUND" -> {
+                    manager.startNextRound(session);
+                    Room room = manager.roomFor(session);
+                    broadcast(room, "UC_SPEAKING_STARTED", manager.snapshot(room));
+                }
                 case "UC_RECONNECT" -> {
                     Player player = manager.reconnect(session, required(body, "roomId"),
                             required(body, "playerId"), required(body, "reconnectToken"));
@@ -102,6 +107,9 @@ public class UndercoverWebSocketRouter {
                             "word", player.word == null ? "" : player.word,
                             "ready", player.ready,
                             "hasVoted", manager.hasVoted(room, player.id)));
+                    if (manager.lastVoteResult(room) != null) {
+                        send(session, "UC_VOTE_RESULT", manager.lastVoteResult(room));
+                    }
                     broadcastExcept(room, session, "UC_ROOM_UPDATED", manager.snapshot(room));
                 }
                 case "UC_LEAVE_ROOM" -> {
