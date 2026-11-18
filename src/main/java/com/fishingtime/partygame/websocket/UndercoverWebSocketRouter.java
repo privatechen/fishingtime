@@ -80,11 +80,12 @@ public class UndercoverWebSocketRouter {
     }
 
     public void disconnected(WebSocketSession session) {
+        Object playerId = session.getAttributes().get("undercoverPlayerId");
         Room room = manager.disconnect(session);
         if (room == null) return;
         try {
             broadcast(room, "UC_PLAYER_DISCONNECTED", Map.of(
-                    "playerId", session.getAttributes().get("undercoverPlayerId"),
+                    "playerId", playerId,
                     "room", manager.snapshot(room)));
         } catch (Exception ex) {
             log.warn("[Undercover] disconnect broadcast failed", ex);
