@@ -395,7 +395,41 @@ public class UndercoverManager {
         result.put("results", results);
         result.put("round", room.round);
         result.put("allVoted", true);
+        room.lastVoteResult = result;
         return result;
+    }
+
+    public Map<String,Object> lastVoteResult(Room room) {
+        synchronized (room) { return room.lastVoteResult; }
+    }
+
+    public void startNextRound(WebSocketSession session) {
+        Room room = roomFor(session);
+        synchronized (room) {
+            if (!playerId(session).equals(room.hostPlayerId)) {
+                throw new IllegalArgumentException("只有房主可以开始下一轮");
+            }
+            if (room.state != UndercoverState.ELIMINATION) {
+                throw new IllegalArgumentException("当前不能开始下一轮");
+            }
+            List<String> alive = room.players.values().stream()
+                    .filter(p -> p.online && p.alive)
+                    .map(p -> p.id)
+                    .collect(java.util.stream.Collectors.toCollection(ArrayList::new));
+            if (alive.size() < MIN_PLAYERS) {
+                throw new IllegalArgumentException("存活玩家不足，无法继续游戏");
+            }
+            Collections.shuffle(alive, RANDOM);
+            room.speakingOrder = alive;
+            room.speakingIndex = 0;
+            room.votes.clear();
+            room.lastVoteResult = null;
+            room.round++;
+            room.state = UndercoverState.SPEAKING;
+            room.speakingDeadline = System.currentTimeMillis() + 15_000L;
+            room.voteDeadline = 0L;
+            room.touch();
+        }
     }
 
     public boolean hasVoted(Room room, String playerId) {
@@ -511,6 +545,7 @@ public class UndercoverManager {
         public long speakingDeadline;
         public long voteDeadline;
         public final Map<String,String> votes = new LinkedHashMap<>();
+        public Map<String,Object> lastVoteResult;
         public long updatedAt = System.currentTimeMillis();
 
         public Room(String roomId) { this.roomId = roomId; }
